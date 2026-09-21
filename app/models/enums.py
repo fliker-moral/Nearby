@@ -1,0 +1,22 @@
+from enum import Enum
+
+
+class UserRole(str, Enum):
+    APPLICANT = "APPLICANT"
+    VOLUNTEER = "VOLUNTEER"
+    ADMIN = "ADMIN"
+
+
+class TaskCategory(str, Enum):
+    PERSONAL_HELP = "PERSONAL_HELP"
+    EVENT_ORGANIZATION = "EVENT_ORGANIZATION"
+    OTHER = "OTHER"
+
+
+class TaskStatus(str, Enum):
+    PENDING_MODERATION = "PENDING_MODERATION"
+    PUBLISHED = "PUBLISHED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CLOSED = "CLOSED"
+    REJECTED = "REJECTED"
