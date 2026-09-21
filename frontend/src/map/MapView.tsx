@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import maplibregl, { Map as MLMap, Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -11,7 +11,7 @@ import {
 } from '../config';
 import type { LngLat, Task } from '../types';
 import { add3DBuildings } from './buildings';
-import { createTaskMarkerEl, updateTaskMarkerEl } from './marker';
+import { addTaskLayers, registerPinImages, updateTaskData } from './taskLayer';
 
 export interface MapViewHandle {
   flyTo: (p: LngLat, zoom?: number) => void;
@@ -31,23 +31,17 @@ interface MapViewProps {
   onReady?: () => void;
 }
 
-interface MarkerEntry {
-  marker: Marker;
-  el: HTMLElement;
-  status: Task['status'];
-}
-
 const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   { tasks, selectedId, userLocation, onSelectTask, onUserLocation, onReady },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
-  const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
   const userMarkerRef = useRef<Marker | null>(null);
   const readyRef = useRef(false);
+  const [loading, setLoading] = useState(true);
 
-  // Держим свежие колбэки/данные в ref, чтобы init-эффект был одноразовым.
+  // Свежие данные/колбэки в ref, чтобы init-эффект оставался одноразовым.
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
   const onSelectRef = useRef(onSelectTask);
@@ -66,23 +60,29 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       bearing: DEFAULT_BEARING,
       attributionControl: { compact: true },
       maxPitch: 75,
+      fadeDuration: 100,
     });
     mapRef.current = map;
 
-    map.on('load', () => {
-      readyRef.current = true;
+    map.on('load', async () => {
       try {
         add3DBuildings(map);
       } catch (e) {
         console.warn('3D-здания недоступны для этого стиля', e);
       }
-      syncMarkers(tasksRef.current);
+      // Иконки должны быть готовы ДО создания слоя с пинами.
+      await registerPinImages(map);
+      const selectFromMap = (id: string) => {
+        const task = tasksRef.current.find((t) => t.id === id);
+        if (task) onSelectRef.current(task);
+      };
+      addTaskLayers(map, tasksRef.current, selectFromMap);
+      readyRef.current = true;
+      setLoading(false);
       onReady?.();
     });
 
     return () => {
-      markersRef.current.forEach((m) => m.marker.remove());
-      markersRef.current.clear();
       userMarkerRef.current?.remove();
       userMarkerRef.current = null;
       map.remove();
@@ -92,55 +92,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Синхронизация маркеров при изменении tasks ─────────────────────────
-  function syncMarkers(list: Task[]) {
-    const map = mapRef.current;
-    if (!map || !readyRef.current) return;
-    const store = markersRef.current;
-    const seen = new Set<string>();
-
-    for (const task of list) {
-      seen.add(task.id);
-      const existing = store.get(task.id);
-      if (existing) {
-        existing.marker.setLngLat([task.lon, task.lat]);
-        if (existing.status !== task.status) {
-          updateTaskMarkerEl(existing.el, task);
-          existing.status = task.status;
-        }
-        continue;
-      }
-      const el = createTaskMarkerEl(task);
-      el.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        onSelectRef.current(task);
-      });
-      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([task.lon, task.lat])
-        .addTo(map);
-      store.set(task.id, { marker, el, status: task.status });
-    }
-
-    // Удаляем метки, которых больше нет в списке.
-    for (const [id, entry] of store) {
-      if (!seen.has(id)) {
-        entry.marker.remove();
-        store.delete(id);
-      }
-    }
-  }
-
+  // ── Обновление данных задач + подсветки выбора ─────────────────────────
   useEffect(() => {
-    syncMarkers(tasks);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks]);
-
-  // ── Подсветка выбранной метки ──────────────────────────────────────────
-  useEffect(() => {
-    markersRef.current.forEach((entry, id) => {
-      entry.el.classList.toggle('task-marker--active', id === selectedId);
-    });
-  }, [selectedId]);
+    if (readyRef.current && mapRef.current) {
+      updateTaskData(mapRef.current, tasks, selectedId);
+    }
+  }, [tasks, selectedId]);
 
   // ── Маркер местоположения пользователя ─────────────────────────────────
   useEffect(() => {
@@ -184,7 +141,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
           mapRef.current?.flyTo({ center: [p.lon, p.lat], zoom: 16, duration: 900 });
         },
         () => {
-          // Отказ в геолокации — тихо остаёмся на дефолтном центре.
+          /* отказ в геолокации — остаёмся на дефолтном центре */
         },
         { enableHighAccuracy: true, timeout: 8000 },
       );
@@ -194,7 +151,17 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     resize: () => mapRef.current?.resize(),
   }));
 
-  return <div className="map-view" ref={containerRef} />;
+  return (
+    <div className="map-view">
+      <div className="map-canvas" ref={containerRef} />
+      {loading && (
+        <div className="map-loading" aria-hidden>
+          <span className="map-loading__spinner" />
+          <span className="map-loading__text">Загружаем карту…</span>
+        </div>
+      )}
+    </div>
+  );
 });
 
 export default MapView;

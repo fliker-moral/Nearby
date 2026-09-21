@@ -98,6 +98,40 @@ button {
   position: absolute;
   inset: 0;
 }
+.map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Оверлей загрузки карты, пока грузятся тайлы */
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  background: linear-gradient(180deg, #eef1f6, #e3e8f0);
+}
+.map-loading__spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(31, 143, 255, 0.25);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+.map-loading__text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .maplibregl-ctrl-attrib {
   font-size: 10px;
   opacity: 0.7;
@@ -299,71 +333,7 @@ button {
   background: var(--line);
 }
 
-/* ── Маркеры задач ───────────────────────────────────────────────────── */
-.task-marker {
-  --marker-color: #1f8fff;
-  position: relative;
-  width: 40px;
-  height: 48px;
-  display: grid;
-  place-items: start center;
-  transform-origin: bottom center;
-  transition: transform 0.15s ease;
-}
-.task-marker:active {
-  transform: scale(0.92);
-}
-.task-marker__pin {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  background: var(--marker-color);
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  box-shadow: 0 6px 14px rgba(18, 23, 42, 0.35);
-  border: 2.5px solid #fff;
-  display: grid;
-  place-items: center;
-}
-.task-marker__glyph {
-  transform: rotate(45deg);
-  font-size: 16px;
-  line-height: 1;
-}
-.task-marker__pulse {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  width: 30px;
-  height: 30px;
-  margin-left: -15px;
-  border-radius: 50%;
-  background: var(--marker-color);
-  opacity: 0.5;
-  animation: pulse 1.8s ease-out infinite;
-}
-@keyframes pulse {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
-.task-marker--muted .task-marker__pin {
-  filter: grayscale(0.55);
-  opacity: 0.75;
-}
-.task-marker--active {
-  transform: scale(1.18);
-  z-index: 2;
-}
-.task-marker--active .task-marker__pin {
-  box-shadow: 0 8px 22px rgba(18, 23, 42, 0.5);
-}
-
+/* ── Маркер местоположения пользователя ──────────────────────────────── */
 .user-marker {
   width: 22px;
   height: 22px;
