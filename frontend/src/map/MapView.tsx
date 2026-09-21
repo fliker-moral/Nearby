@@ -1,0 +1,200 @@
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import maplibregl, { Map as MLMap, Marker } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+
+import {
+  DEFAULT_BEARING,
+  DEFAULT_CENTER,
+  DEFAULT_PITCH,
+  DEFAULT_ZOOM,
+  MAP_STYLE_URL,
+} from '../config';
+import type { LngLat, Task } from '../types';
+import { add3DBuildings } from './buildings';
+import { createTaskMarkerEl, updateTaskMarkerEl } from './marker';
+
+export interface MapViewHandle {
+  flyTo: (p: LngLat, zoom?: number) => void;
+  set3D: (on: boolean) => void;
+  locate: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resize: () => void;
+}
+
+interface MapViewProps {
+  tasks: Task[];
+  selectedId: string | null;
+  userLocation: LngLat | null;
+  onSelectTask: (task: Task) => void;
+  onUserLocation: (p: LngLat) => void;
+  onReady?: () => void;
+}
+
+interface MarkerEntry {
+  marker: Marker;
+  el: HTMLElement;
+  status: Task['status'];
+}
+
+const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
+  { tasks, selectedId, userLocation, onSelectTask, onUserLocation, onReady },
+  ref,
+) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MLMap | null>(null);
+  const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
+  const userMarkerRef = useRef<Marker | null>(null);
+  const readyRef = useRef(false);
+
+  // Держим свежие колбэки/данные в ref, чтобы init-эффект был одноразовым.
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const onSelectRef = useRef(onSelectTask);
+  onSelectRef.current = onSelectTask;
+
+  // ── Инициализация карты (один раз) ─────────────────────────────────────
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: MAP_STYLE_URL,
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+      pitch: DEFAULT_PITCH,
+      bearing: DEFAULT_BEARING,
+      attributionControl: { compact: true },
+      maxPitch: 75,
+    });
+    mapRef.current = map;
+
+    map.on('load', () => {
+      readyRef.current = true;
+      try {
+        add3DBuildings(map);
+      } catch (e) {
+        console.warn('3D-здания недоступны для этого стиля', e);
+      }
+      syncMarkers(tasksRef.current);
+      onReady?.();
+    });
+
+    return () => {
+      markersRef.current.forEach((m) => m.marker.remove());
+      markersRef.current.clear();
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      map.remove();
+      mapRef.current = null;
+      readyRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Синхронизация маркеров при изменении tasks ─────────────────────────
+  function syncMarkers(list: Task[]) {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    const store = markersRef.current;
+    const seen = new Set<string>();
+
+    for (const task of list) {
+      seen.add(task.id);
+      const existing = store.get(task.id);
+      if (existing) {
+        existing.marker.setLngLat([task.lon, task.lat]);
+        if (existing.status !== task.status) {
+          updateTaskMarkerEl(existing.el, task);
+          existing.status = task.status;
+        }
+        continue;
+      }
+      const el = createTaskMarkerEl(task);
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        onSelectRef.current(task);
+      });
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([task.lon, task.lat])
+        .addTo(map);
+      store.set(task.id, { marker, el, status: task.status });
+    }
+
+    // Удаляем метки, которых больше нет в списке.
+    for (const [id, entry] of store) {
+      if (!seen.has(id)) {
+        entry.marker.remove();
+        store.delete(id);
+      }
+    }
+  }
+
+  useEffect(() => {
+    syncMarkers(tasks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
+
+  // ── Подсветка выбранной метки ──────────────────────────────────────────
+  useEffect(() => {
+    markersRef.current.forEach((entry, id) => {
+      entry.el.classList.toggle('task-marker--active', id === selectedId);
+    });
+  }, [selectedId]);
+
+  // ── Маркер местоположения пользователя ─────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !userLocation) return;
+    if (!userMarkerRef.current) {
+      const el = document.createElement('div');
+      el.className = 'user-marker';
+      el.innerHTML = '<span class="user-marker__dot"></span>';
+      userMarkerRef.current = new maplibregl.Marker({ element: el })
+        .setLngLat([userLocation.lon, userLocation.lat])
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat([userLocation.lon, userLocation.lat]);
+    }
+  }, [userLocation]);
+
+  // ── Императивный API для родителя ──────────────────────────────────────
+  useImperativeHandle(ref, () => ({
+    flyTo: (p, zoom) => {
+      mapRef.current?.flyTo({
+        center: [p.lon, p.lat],
+        zoom: zoom ?? Math.max(mapRef.current.getZoom(), 16),
+        duration: 900,
+        essential: true,
+      });
+    },
+    set3D: (on) => {
+      mapRef.current?.easeTo({
+        pitch: on ? DEFAULT_PITCH : 0,
+        bearing: on ? DEFAULT_BEARING : 0,
+        duration: 600,
+      });
+    },
+    locate: () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const p: LngLat = { lon: pos.coords.longitude, lat: pos.coords.latitude };
+          onUserLocation(p);
+          mapRef.current?.flyTo({ center: [p.lon, p.lat], zoom: 16, duration: 900 });
+        },
+        () => {
+          // Отказ в геолокации — тихо остаёмся на дефолтном центре.
+        },
+        { enableHighAccuracy: true, timeout: 8000 },
+      );
+    },
+    zoomIn: () => mapRef.current?.zoomIn({ duration: 300 }),
+    zoomOut: () => mapRef.current?.zoomOut({ duration: 300 }),
+    resize: () => mapRef.current?.resize(),
+  }));
+
+  return <div className="map-view" ref={containerRef} />;
+});
+
+export default MapView;

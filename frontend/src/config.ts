@@ -1,0 +1,61 @@
+import type { TaskCategory, TaskStatus } from './types';
+
+/** База API. В dev проксируется на FastAPI через vite.config.ts. */
+export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1';
+
+/** WebSocket-канал карты. */
+export const WS_BASE =
+  import.meta.env.VITE_WS_BASE ??
+  (typeof window !== 'undefined'
+    ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/v1`
+    : '');
+
+/**
+ * Стиль карты. OpenFreeMap — бесплатные векторные тайлы без API-ключа,
+ * с высотами зданий в source-layer "building" (нужно для 3D-экструзии).
+ */
+export const MAP_STYLE_URL =
+  import.meta.env.VITE_MAP_STYLE ?? 'https://tiles.openfreemap.org/styles/liberty';
+
+/** Стартовая точка карты — центр Москвы (совпадает с примерами в архитектуре). */
+export const DEFAULT_CENTER: [number, number] = [37.6183, 55.7512];
+export const DEFAULT_ZOOM = 15.5;
+export const DEFAULT_PITCH = 55;
+export const DEFAULT_BEARING = -18;
+
+export interface CategoryMeta {
+  label: string;
+  short: string;
+  color: string;
+  emoji: string;
+}
+
+export const CATEGORY_META: Record<TaskCategory, CategoryMeta> = {
+  PERSONAL_HELP: {
+    label: 'Личная помощь',
+    short: 'Помощь',
+    color: '#ff5470',
+    emoji: '🤝',
+  },
+  EVENT_ORGANIZATION: {
+    label: 'Мероприятие',
+    short: 'Событие',
+    color: '#7c5cff',
+    emoji: '🎉',
+  },
+  OTHER: {
+    label: 'Другое',
+    short: 'Другое',
+    color: '#1f8fff',
+    emoji: '📦',
+  },
+};
+
+export const STATUS_META: Record<TaskStatus, { label: string; color: string }> = {
+  PENDING_MODERATION: { label: 'На модерации', color: '#9aa4b2' },
+  PUBLISHED: { label: 'Свободна', color: '#22c55e' },
+  IN_PROGRESS: { label: 'В работе', color: '#f59e0b' },
+  COMPLETED: { label: 'Выполнена', color: '#1f8fff' },
+  CLOSED: { label: 'Закрыта', color: '#9aa4b2' },
+  REJECTED: { label: 'Отклонена', color: '#ef4444' },
+};

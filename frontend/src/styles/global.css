@@ -1,0 +1,868 @@
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --ink: #12172a;
+  --ink-2: #5b6478;
+  --muted: #9aa4b2;
+  --line: #e7ebf2;
+  --accent: #1f8fff;
+  --accent-ink: #ffffff;
+  --shadow-sm: 0 2px 8px rgba(18, 23, 42, 0.08);
+  --shadow-md: 0 8px 24px rgba(18, 23, 42, 0.14);
+  --shadow-lg: 0 -12px 40px rgba(18, 23, 42, 0.18);
+  --radius: 16px;
+  --nav-h: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', system-ui, sans-serif;
+  background: #d7dce6;
+  color: var(--ink);
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* ── Каркас приложения / «телефон» на десктопе ───────────────────────── */
+.app {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--bg);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+@media (min-width: 560px) {
+  body {
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  .app {
+    height: min(920px, 96vh);
+    border-radius: 40px;
+    box-shadow: 0 40px 120px rgba(18, 23, 42, 0.4), 0 0 0 10px #0b0f1c,
+      0 0 0 12px #2a2f3d;
+  }
+}
+
+.screen-slot {
+  position: absolute;
+  inset: 0;
+}
+.screen-slot--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+/* MapLibre держит атрибуцию visibility:visible, поэтому гасим её отдельно. */
+.screen-slot--hidden .maplibregl-control-container {
+  display: none;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+}
+
+/* ── Карта ───────────────────────────────────────────────────────────── */
+.map-view {
+  position: absolute;
+  inset: 0;
+}
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.maplibregl-ctrl-bottom-right {
+  bottom: calc(var(--nav-h) + var(--safe-bottom));
+}
+
+.map-top {
+  position: absolute;
+  top: calc(12px + var(--safe-top));
+  left: 12px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 50px;
+  padding: 0 8px 0 16px;
+  background: var(--surface);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+}
+.search-bar__icon {
+  color: var(--muted);
+  flex: none;
+}
+.search-bar__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  background: transparent;
+  color: var(--ink);
+}
+.search-bar__input::placeholder {
+  color: var(--muted);
+}
+.search-bar__btn {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+.search-bar__btn:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* Чипы категорий */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease;
+}
+.chip:active {
+  transform: scale(0.96);
+}
+.chip--active {
+  color: #fff;
+}
+.chip__emoji {
+  font-size: 14px;
+}
+.chip__count {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(18, 23, 42, 0.08);
+}
+.chip--active .chip__count {
+  background: rgba(255, 255, 255, 0.28);
+}
+.chips--static {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.chip--tag {
+  background: var(--surface-2);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+/* Подсказка «свободно рядом» + demo-бейдж */
+.map-hint {
+  position: absolute;
+  left: 12px;
+  bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+}
+.badge {
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+.badge--demo {
+  background: #12172a;
+  color: #fff;
+}
+
+/* Плавающие контролы карты */
+.map-controls {
+  position: absolute;
+  right: 12px;
+  bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.ctl {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  transition: transform 0.12s ease;
+}
+.ctl:active {
+  transform: scale(0.94);
+}
+.ctl--mode.ctl--on {
+  background: var(--accent);
+  color: #fff;
+}
+.ctl__badge {
+  position: absolute;
+  bottom: -4px;
+  right: -2px;
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 5px;
+  border: 2px solid var(--bg);
+}
+.ctl--on .ctl__badge {
+  background: #fff;
+  color: var(--accent);
+}
+.ctl-group {
+  background: var(--surface);
+  border-radius: 26px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ctl-group .ctl {
+  box-shadow: none;
+  background: transparent;
+}
+.ctl-group__sep {
+  width: 24px;
+  height: 1px;
+  background: var(--line);
+}
+
+/* ── Маркеры задач ───────────────────────────────────────────────────── */
+.task-marker {
+  --marker-color: #1f8fff;
+  position: relative;
+  width: 40px;
+  height: 48px;
+  display: grid;
+  place-items: start center;
+  transform-origin: bottom center;
+  transition: transform 0.15s ease;
+}
+.task-marker:active {
+  transform: scale(0.92);
+}
+.task-marker__pin {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  background: var(--marker-color);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 6px 14px rgba(18, 23, 42, 0.35);
+  border: 2.5px solid #fff;
+  display: grid;
+  place-items: center;
+}
+.task-marker__glyph {
+  transform: rotate(45deg);
+  font-size: 16px;
+  line-height: 1;
+}
+.task-marker__pulse {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border-radius: 50%;
+  background: var(--marker-color);
+  opacity: 0.5;
+  animation: pulse 1.8s ease-out infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.task-marker--muted .task-marker__pin {
+  filter: grayscale(0.55);
+  opacity: 0.75;
+}
+.task-marker--active {
+  transform: scale(1.18);
+  z-index: 2;
+}
+.task-marker--active .task-marker__pin {
+  box-shadow: 0 8px 22px rgba(18, 23, 42, 0.5);
+}
+
+.user-marker {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+}
+.user-marker__dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 4px rgba(31, 143, 255, 0.28);
+}
+
+/* ── Bottom sheet карточки задачи ────────────────────────────────────── */
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(10, 14, 26, 0.35);
+  animation: fade 0.2s ease;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  box-shadow: var(--shadow-lg);
+  padding: 10px 20px calc(20px + var(--safe-bottom));
+  max-height: 82%;
+  overflow-y: auto;
+  animation: slide-up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+.sheet__grabber {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  margin: 2px auto 12px;
+}
+.sheet__close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+}
+.sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sheet__cat {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+.sheet__status {
+  font-size: 13px;
+  font-weight: 600;
+}
+.sheet__title {
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 12px 0 12px;
+  padding-right: 30px;
+}
+.sheet__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.meta-pill--reward {
+  background: #fff2f5;
+  color: #ff3d68;
+}
+.sheet__desc {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 0 0 16px;
+}
+.sheet__address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.sheet__address svg {
+  color: var(--accent);
+  flex: none;
+}
+.sheet__author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cff, #1f8fff);
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.avatar--lg {
+  width: 64px;
+  height: 64px;
+  font-size: 26px;
+}
+.sheet__author-info {
+  display: flex;
+  flex-direction: column;
+}
+.sheet__author-name {
+  font-weight: 700;
+}
+.sheet__author-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #f5a623;
+  font-weight: 600;
+}
+.muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+.sheet__actions {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.icon-btn {
+  width: 52px;
+  flex: none;
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  transition: transform 0.12s ease;
+}
+.icon-btn:active {
+  transform: scale(0.94);
+}
+.icon-btn--on {
+  background: #fff2f5;
+  color: #ff3d68;
+}
+.btn-primary {
+  flex: 1;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  grid-auto-flow: column;
+  gap: 8px;
+  transition: transform 0.12s ease, opacity 0.2s ease;
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+.btn-primary:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: default;
+}
+.btn-primary--done {
+  background: #16a34a;
+  color: #fff;
+}
+
+/* ── Списочные экраны ────────────────────────────────────────────────── */
+.screen--list {
+  background: var(--bg);
+  overflow-y: auto;
+  padding: calc(18px + var(--safe-top)) 16px calc(var(--nav-h) + var(--safe-bottom) + 20px);
+}
+.list-header h1 {
+  font-size: 26px;
+  margin: 0 0 4px;
+}
+.list-header p {
+  margin: 0 0 16px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.task-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease;
+}
+.task-card:active {
+  transform: scale(0.99);
+}
+.task-card__glyph {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex: none;
+}
+.task-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.task-card__title {
+  font-weight: 700;
+  font-size: 15px;
+}
+.task-card__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-2);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-card__sub svg {
+  flex: none;
+  color: var(--muted);
+}
+.task-card__meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+.task-card__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  text-align: center;
+  color: var(--muted);
+  padding: 60px 20px;
+}
+.empty p {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin: 8px 0 0;
+}
+.empty span {
+  font-size: 14px;
+  max-width: 240px;
+}
+
+.route-summary {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.route-summary__item {
+  flex: 1;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.route-summary__item b {
+  display: block;
+  font-size: 22px;
+}
+.route-summary__item span {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* Профиль */
+.profile-hero {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.profile-hero h1 {
+  font-size: 22px;
+  margin: 0 0 2px;
+}
+.profile-role {
+  display: block;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.profile-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #f5a623;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.stat-grid {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.stat {
+  flex: 1;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px 8px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.stat b {
+  display: block;
+  font-size: 24px;
+}
+.stat span {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.profile-section {
+  margin-bottom: 22px;
+}
+.profile-section h2 {
+  font-size: 15px;
+  margin: 0 0 10px;
+  color: var(--ink-2);
+}
+.level__bar {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.level__bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #7c5cff, #1f8fff);
+}
+.level__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.profile-foot {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* ── Нижняя навигация ────────────────────────────────────────────────── */
+.bottom-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  display: flex;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+.nav-item--active {
+  color: var(--accent);
+}
+.nav-item__icon {
+  position: relative;
+}
+.nav-item__badge {
+  position: absolute;
+  top: -5px;
+  right: -9px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff3d68;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+}
+
+/* ── Тосты ───────────────────────────────────────────────────────────── */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--nav-h) + var(--safe-bottom) + 20px);
+  transform: translateX(-50%);
+  z-index: 30;
+  max-width: calc(100% - 32px);
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: #12172a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  animation: toast-in 0.24s ease;
+  text-align: center;
+}
+@keyframes toast-in {
+  from {
+    transform: translate(-50%, 12px);
+    opacity: 0;
+  }
+}
+.toast--success {
+  background: #16a34a;
+}
+.toast--error {
+  background: #e11d48;
+}
