@@ -3,6 +3,13 @@ import type { TaskCategory, TaskStatus } from './types';
 /** База API. В dev проксируется на FastAPI через vite.config.ts. */
 export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1';
 
+/**
+ * Ключ Yandex Maps JS API 3.0. Если задан — карта рисуется на Яндекс.Картах
+ * (вид как в Яндекс Go). Если пусто — приложение откатывается на MapLibre,
+ * чтобы работать без ключа «в один клик».
+ */
+export const YANDEX_API_KEY = import.meta.env.VITE_YANDEX_API_KEY ?? '';
+
 /** WebSocket-канал карты. */
 export const WS_BASE =
   import.meta.env.VITE_WS_BASE ??
