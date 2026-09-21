@@ -11,12 +11,13 @@ export const WS_BASE =
     : '');
 
 /**
- * Стиль карты. Positron — лёгкий минималистичный стиль (как в Яндекс Go):
- * плоская 2D-карта, быстро рендерится, без тяжёлой 3D-геометрии.
+ * Стиль карты. Liberty — цветной читаемый стиль (парки, вода, дороги, подписи),
+ * как в Яндекс Go. Используем его в плоском 2D-режиме: без наклона и 3D-зданий,
+ * поэтому нагрузки 3D нет, а карта хорошо различима.
  * OpenFreeMap — бесплатные векторные тайлы без API-ключа.
  */
 export const MAP_STYLE_URL =
-  import.meta.env.VITE_MAP_STYLE ?? 'https://tiles.openfreemap.org/styles/positron';
+  import.meta.env.VITE_MAP_STYLE ?? 'https://tiles.openfreemap.org/styles/liberty';
 
 /** Стартовая точка карты — центр Москвы (совпадает с примерами в архитектуре). */
 export const DEFAULT_CENTER: [number, number] = [37.6183, 55.7512];
