@@ -20,7 +20,6 @@ class User(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
     max_id: Mapped[int] = mapped_column(
         BigInteger,
         unique=True,
-        index=True,
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -48,19 +47,19 @@ class User(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
         server_default=text("'{}'::jsonb"),
     )
 
-    authored_tasks: Mapped[list["Task"]] = relationship(
+    authored_tasks: Mapped[list[Task]] = relationship(
         back_populates="author",
         foreign_keys="Task.author_id",
     )
-    assigned_tasks: Mapped[list["Task"]] = relationship(
+    assigned_tasks: Mapped[list[Task]] = relationship(
         back_populates="assigned_volunteer",
         foreign_keys="Task.assigned_volunteer_id",
     )
-    written_reviews: Mapped[list["Review"]] = relationship(
+    written_reviews: Mapped[list[Review]] = relationship(
         back_populates="author",
         foreign_keys="Review.author_id",
     )
-    received_reviews: Mapped[list["Review"]] = relationship(
+    received_reviews: Mapped[list[Review]] = relationship(
         back_populates="target_user",
         foreign_keys="Review.target_user_id",
     )

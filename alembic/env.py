@@ -4,16 +4,16 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.core.config import settings
-from app.models import Base
-
+from app.core.config import settings  # noqa: E402
+from app.models import Base  # noqa: E402
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_sync_url)
@@ -24,6 +24,18 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def include_object(
+    object_: object,
+    name: str | None,
+    type_: str,
+    reflected: bool,
+    compare_to: object | None,
+) -> bool:
+    del object_, name
+    # PostGIS installs support tables that are not managed by this application.
+    return not (reflected and compare_to is None and type_ in {"table", "index"})
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
@@ -31,6 +43,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         compare_type=True,
         compare_server_default=True,
+        include_object=include_object,
         dialect_opts={"paramstyle": "named"},
     )
 
@@ -52,6 +65,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

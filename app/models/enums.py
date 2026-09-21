@@ -1,19 +1,19 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     APPLICANT = "APPLICANT"
     VOLUNTEER = "VOLUNTEER"
     ADMIN = "ADMIN"
 
 
-class TaskCategory(str, Enum):
+class TaskCategory(StrEnum):
     PERSONAL_HELP = "PERSONAL_HELP"
     EVENT_ORGANIZATION = "EVENT_ORGANIZATION"
     OTHER = "OTHER"
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     PENDING_MODERATION = "PENDING_MODERATION"
     PUBLISHED = "PUBLISHED"
     IN_PROGRESS = "IN_PROGRESS"
