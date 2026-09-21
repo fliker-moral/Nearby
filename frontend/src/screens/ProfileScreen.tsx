@@ -1,6 +1,6 @@
 import { getCurrentUser } from '../lib/maxBridge';
 import type { Task } from '../types';
-import { FlameIcon, StarIcon, ChevronRightIcon, ClockIcon, HeartIcon } from '../components/icons';
+import { FlameIcon, StarIcon, ChevronRightIcon } from '../components/icons';
 
 interface ProfileScreenProps {
   tasks: Task[];
@@ -98,15 +98,6 @@ export default function ProfileScreen({ tasks }: ProfileScreenProps) {
         <div className="challenge__meta">
           <span>3 842 / 5 000</span>
           <span className="muted">присоединились 1 245 волонтёров</span>
-        </div>
-        <div className="challenge__stats">
-          <span>
-            <HeartIcon width={14} height={14} /> {done} дел
-          </span>
-          <span>
-            <ClockIcon width={14} height={14} /> 14 ч
-          </span>
-          <span>Топ 12% в городе</span>
         </div>
       </section>
 

@@ -1118,21 +1118,6 @@ h2 {
   font-weight: 600;
   margin-top: 8px;
 }
-.challenge__stats {
-  display: flex;
-  gap: 14px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-.challenge__stats span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
 .profile-foot {
   color: var(--muted);
   font-size: 13px;
