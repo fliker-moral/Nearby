@@ -23,7 +23,6 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('map');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<CategoryValue>('ALL');
-  const [is3D, setIs3D] = useState(true);
   const [userLocation, setUserLocation] = useState<LngLat | null>(null);
   const [selected, setSelected] = useState<Task | null>(null);
   const [assigning, setAssigning] = useState(false);
@@ -89,14 +88,6 @@ export default function App() {
     );
   };
 
-  const toggle3D = () => {
-    setIs3D((prev) => {
-      const next = !prev;
-      mapRef.current?.set3D(next);
-      return next;
-    });
-  };
-
   const favTasks = tasks.filter((t) => favorites.has(t.id));
   const activeCount = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
 
@@ -111,13 +102,11 @@ export default function App() {
           userLocation={userLocation}
           search={search}
           category={category}
-          is3D={is3D}
           source={source}
           onSearch={setSearch}
           onCategory={setCategory}
           onSelectTask={openTask}
           onUserLocation={setUserLocation}
-          onToggle3D={toggle3D}
           onZoomIn={() => mapRef.current?.zoomIn()}
           onZoomOut={() => mapRef.current?.zoomOut()}
           onLocate={() => mapRef.current?.locate()}

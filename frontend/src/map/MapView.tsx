@@ -2,20 +2,12 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import maplibregl, { Map as MLMap, Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import {
-  DEFAULT_BEARING,
-  DEFAULT_CENTER,
-  DEFAULT_PITCH,
-  DEFAULT_ZOOM,
-  MAP_STYLE_URL,
-} from '../config';
+import { DEFAULT_CENTER, DEFAULT_ZOOM, MAP_STYLE_URL } from '../config';
 import type { LngLat, Task } from '../types';
-import { add3DBuildings } from './buildings';
 import { addTaskLayers, registerPinImages, updateTaskData } from './taskLayer';
 
 export interface MapViewHandle {
   flyTo: (p: LngLat, zoom?: number) => void;
-  set3D: (on: boolean) => void;
   locate: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -56,20 +48,19 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       style: MAP_STYLE_URL,
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
-      pitch: DEFAULT_PITCH,
-      bearing: DEFAULT_BEARING,
       attributionControl: { compact: true },
-      maxPitch: 75,
+      // Плоская карта как в Яндекс Go: без наклона и вращения — быстро и удобно.
+      pitch: 0,
+      bearing: 0,
+      pitchWithRotate: false,
+      dragRotate: false,
+      touchPitch: false,
       fadeDuration: 100,
     });
     mapRef.current = map;
+    map.touchZoomRotate.disableRotation();
 
     map.on('load', async () => {
-      try {
-        add3DBuildings(map);
-      } catch (e) {
-        console.warn('3D-здания недоступны для этого стиля', e);
-      }
       // Иконки должны быть готовы ДО создания слоя с пинами.
       await registerPinImages(map);
       const selectFromMap = (id: string) => {
@@ -123,13 +114,6 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         zoom: zoom ?? Math.max(mapRef.current.getZoom(), 16),
         duration: 900,
         essential: true,
-      });
-    },
-    set3D: (on) => {
-      mapRef.current?.easeTo({
-        pitch: on ? DEFAULT_PITCH : 0,
-        bearing: on ? DEFAULT_BEARING : 0,
-        duration: 600,
       });
     },
     locate: () => {

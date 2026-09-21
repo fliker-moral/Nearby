@@ -12,13 +12,11 @@ interface MapScreenProps {
   userLocation: LngLat | null;
   search: string;
   category: CategoryValue;
-  is3D: boolean;
   source: 'api' | 'mock' | 'loading';
   onSearch: (v: string) => void;
   onCategory: (v: CategoryValue) => void;
   onSelectTask: (task: Task) => void;
   onUserLocation: (p: LngLat) => void;
-  onToggle3D: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onLocate: () => void;
@@ -68,8 +66,6 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(
       </div>
 
       <MapControls
-        is3D={props.is3D}
-        onToggle3D={props.onToggle3D}
         onZoomIn={props.onZoomIn}
         onZoomOut={props.onZoomOut}
         onLocate={props.onLocate}

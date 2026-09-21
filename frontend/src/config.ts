@@ -11,17 +11,16 @@ export const WS_BASE =
     : '');
 
 /**
- * Стиль карты. OpenFreeMap — бесплатные векторные тайлы без API-ключа,
- * с высотами зданий в source-layer "building" (нужно для 3D-экструзии).
+ * Стиль карты. Positron — лёгкий минималистичный стиль (как в Яндекс Go):
+ * плоская 2D-карта, быстро рендерится, без тяжёлой 3D-геометрии.
+ * OpenFreeMap — бесплатные векторные тайлы без API-ключа.
  */
 export const MAP_STYLE_URL =
-  import.meta.env.VITE_MAP_STYLE ?? 'https://tiles.openfreemap.org/styles/liberty';
+  import.meta.env.VITE_MAP_STYLE ?? 'https://tiles.openfreemap.org/styles/positron';
 
 /** Стартовая точка карты — центр Москвы (совпадает с примерами в архитектуре). */
 export const DEFAULT_CENTER: [number, number] = [37.6183, 55.7512];
-export const DEFAULT_ZOOM = 15.5;
-export const DEFAULT_PITCH = 55;
-export const DEFAULT_BEARING = -18;
+export const DEFAULT_ZOOM = 14.5;
 
 export interface CategoryMeta {
   label: string;
