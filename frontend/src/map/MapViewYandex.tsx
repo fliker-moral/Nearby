@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
-import { CATEGORY_META, DEFAULT_CENTER, DEFAULT_ZOOM, YANDEX_API_KEY } from '../config';
+import { DEFAULT_CENTER, DEFAULT_ZOOM, KIND_META, MODE_COLOR, YANDEX_API_KEY } from '../config';
 import type { LngLat, Task } from '../types';
 import type { MapViewHandle, MapViewProps } from './mapTypes';
 
@@ -34,11 +34,13 @@ function isAvailable(t: Task): boolean {
   return t.status === 'PUBLISHED';
 }
 
-/** DOM-пин «каплей» с эмодзи категории (Яндекс позиционирует его сам). */
+/** DOM-пин «каплей» с иконкой подкатегории (Яндекс позиционирует его сам). */
 function createPinEl(task: Task): HTMLElement {
-  const meta = CATEGORY_META[task.category];
+  const meta = KIND_META[task.kind];
+  const color = MODE_COLOR[meta ? meta.mode : 'help'];
+  const emoji = meta?.emoji ?? '📍';
   const muted = !isAvailable(task) && task.status !== 'IN_PROGRESS';
-  const fill = muted ? '#aab3c2' : meta.color;
+  const fill = muted ? '#aab3c2' : color;
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'ya-pin';
@@ -49,7 +51,7 @@ function createPinEl(task: Task): HTMLElement {
     `<path d="M20 2C11 2 4 9 4 18c0 12 16 32 16 32s16-20 16-32C36 9 29 2 20 2Z" ` +
     `fill="${fill}" stroke="#ffffff" stroke-width="3"/>` +
     `<circle cx="20" cy="18" r="9.5" fill="#ffffff"/></svg>` +
-    `<span class="ya-pin__glyph">${meta.emoji}</span>` +
+    `<span class="ya-pin__glyph">${emoji}</span>` +
     `</span>`;
   return el;
 }
@@ -60,8 +62,13 @@ interface Entry {
   status: Task['status'];
 }
 
-const MapViewYandex = forwardRef<MapViewHandle, MapViewProps>(function MapViewYandex(
-  { tasks, selectedId, userLocation, onSelectTask, onUserLocation, onReady },
+interface YandexProps extends MapViewProps {
+  /** Вызывается, если ymaps3 не загрузился — родитель откатывается на MapLibre. */
+  onFallback?: () => void;
+}
+
+const MapViewYandex = forwardRef<MapViewHandle, YandexProps>(function MapViewYandex(
+  { tasks, selectedId, userLocation, onSelectTask, onUserLocation, onReady, onFallback },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -121,6 +128,8 @@ const MapViewYandex = forwardRef<MapViewHandle, MapViewProps>(function MapViewYa
         if (!cancelled) {
           setError(true);
           setLoading(false);
+          // Ключ ещё не активен / API недоступен — просим родителя откатиться на MapLibre.
+          onFallback?.();
         }
       });
 

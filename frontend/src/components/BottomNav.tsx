@@ -1,12 +1,11 @@
 import type { ComponentType, SVGProps } from 'react';
-import { MapIcon, BookmarkIcon, RouteIcon, ProfileIcon } from './icons';
+import { MapIcon, ListIcon, ProfileIcon } from './icons';
 
-export type Tab = 'map' | 'favorites' | 'routes' | 'profile';
+export type Tab = 'map' | 'myhelp' | 'profile';
 
 const TABS: { key: Tab; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { key: 'map', label: 'Карта', icon: MapIcon },
-  { key: 'favorites', label: 'Избранное', icon: BookmarkIcon },
-  { key: 'routes', label: 'Маршруты', icon: RouteIcon },
+  { key: 'myhelp', label: 'Моя помощь', icon: ListIcon },
   { key: 'profile', label: 'Профиль', icon: ProfileIcon },
 ];
 

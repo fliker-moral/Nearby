@@ -1,24 +1,22 @@
-import { CATEGORY_META, STATUS_META } from '../config';
-import type { LngLat, Task } from '../types';
-import { distanceMeters, formatDistance, formatEta } from '../lib/geo';
+import { KIND_META, MODE_COLOR, STATUS_META } from '../config';
+import type { Task } from '../types';
+import { formatDistance } from '../lib/geo';
 import { ClockIcon, PinIcon } from './icons';
 
 interface TaskCardProps {
   task: Task;
-  userLocation: LngLat | null;
   onOpen: (task: Task) => void;
 }
 
-export default function TaskCard({ task, userLocation, onOpen }: TaskCardProps) {
-  const cat = CATEGORY_META[task.category];
+export default function TaskCard({ task, onOpen }: TaskCardProps) {
+  const meta = KIND_META[task.kind];
   const status = STATUS_META[task.status];
-  const dist =
-    userLocation && distanceMeters(userLocation, { lon: task.lon, lat: task.lat });
+  const color = MODE_COLOR[meta ? meta.mode : 'help'];
 
   return (
     <button className="task-card" onClick={() => onOpen(task)}>
-      <span className="task-card__glyph" style={{ background: cat.color }}>
-        {cat.emoji}
+      <span className="task-card__glyph" style={{ background: color }}>
+        {meta?.emoji ?? '📍'}
       </span>
       <span className="task-card__body">
         <span className="task-card__title">{task.title}</span>
@@ -31,10 +29,10 @@ export default function TaskCard({ task, userLocation, onOpen }: TaskCardProps) 
           </span>
           {task.eta_minutes && (
             <span>
-              <ClockIcon width={13} height={13} /> {formatEta(task.eta_minutes)}
+              <ClockIcon width={13} height={13} /> {task.eta_minutes} мин
             </span>
           )}
-          {dist != null && <span>{formatDistance(dist)}</span>}
+          {task.distance_m != null && <span>{formatDistance(task.distance_m)}</span>}
         </span>
       </span>
     </button>

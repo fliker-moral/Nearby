@@ -1,4 +1,5 @@
-// Типы синхронизированы с бэкендом (app/models/enums.py, app/schemas/*).
+// Типы синхронизированы с бэкендом (app/models/enums.py, app/schemas/*),
+// расширены UI-полями для интерфейса «Помощь рядом».
 
 export type TaskCategory = 'PERSONAL_HELP' | 'EVENT_ORGANIZATION' | 'OTHER';
 
@@ -22,29 +23,43 @@ export interface TaskMapItem {
   lon: number;
 }
 
-/** Автор заявки (пожилой человек / организация) — соответствует schemas.UserRead. */
+/** Автор просьбы (пожилой человек) или организатор события. */
 export interface TaskAuthor {
   id: string;
   name: string;
+  age?: number;
   avatar_url: string | null;
+  verified?: boolean;
   rating_score: number;
   rating_count: number;
 }
 
-/** Полная карточка задачи — соответствует schemas.TaskRead + автор. */
+/** Полная карточка — schemas.TaskRead + UI-поля. */
 export interface Task extends TaskMapItem {
   description: string;
   address_text: string;
   photos: string[];
   author: TaskAuthor;
   created_at: string;
-  /** Условная «награда» в баллах волонтёра — только для UI-геймификации. */
-  reward_points?: number;
-  /** Оценка длительности задачи в минутах — только для UI. */
+  /** Подкатегория для иконки: meds/groceries/home/animals/escort или concert/... */
+  kind: string;
+  /** Предвычисленное расстояние (для demo), метры. */
+  distance_m?: number;
   eta_minutes?: number;
+  /** Опыт/баллы волонтёра за выполнение. */
+  reward_xp?: number;
+  /** Расходы возмещаются (чек оплачивается). */
+  expenses_covered?: boolean;
+  /** Подсказка о месте («Аптека рядом ~5 минут»). */
+  place_hint?: string;
+
+  // — Поля событий —
+  event_date?: string;
+  participants?: number;
+  capacity?: number;
+  image?: string;
 }
 
-/** События WebSocket-канала /api/v1/ws/map. */
 export type MapEvent =
   | { event: 'TASK_CREATED'; data: TaskMapItem }
   | { event: 'TASK_STATUS_CHANGED'; data: { task_id: string; new_status: TaskStatus } };

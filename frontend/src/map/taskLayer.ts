@@ -1,19 +1,21 @@
 import type { Map as MLMap, GeoJSONSource, MapGeoJSONFeature } from 'maplibre-gl';
-import { CATEGORY_META } from '../config';
-import type { Task, TaskCategory } from '../types';
+import { KIND_META, MODE_COLOR } from '../config';
+import type { Task } from '../types';
 
 export const HALO_LAYER = 'task-halo';
 export const PIN_LAYER = 'task-pins';
 const SOURCE = 'tasks';
 
-const CATEGORIES: TaskCategory[] = ['PERSONAL_HELP', 'EVENT_ORGANIZATION', 'OTHER'];
+function kindColor(kind: string): string {
+  const meta = KIND_META[kind];
+  return MODE_COLOR[meta ? meta.mode : 'help'];
+}
+function kindEmoji(kind: string): string {
+  return KIND_META[kind]?.emoji ?? '📍';
+}
 
-/** Рисуем пин-«каплю» с эмодзи категории на canvas → регистрируем как image карты. */
-async function makePinImage(
-  color: string,
-  emoji: string,
-  muted: boolean,
-): Promise<ImageData> {
+/** Рисуем пин-«каплю» с иконкой подкатегории. */
+async function makePinImage(color: string, emoji: string, muted: boolean): Promise<ImageData> {
   const W = 44;
   const H = 56;
   const dpr = 2;
@@ -23,8 +25,7 @@ async function makePinImage(
     `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}'>` +
     `<path d='M22 3 C13 3 6 10 6 19 C6 31 22 52 22 52 C22 52 38 31 38 19 C38 10 31 3 22 3 Z' ` +
     `fill='${fill}' stroke='white' stroke-width='3'/>` +
-    `<circle cx='22' cy='19' r='10' fill='white'/>` +
-    `</svg>`;
+    `<circle cx='22' cy='19' r='10' fill='white'/></svg>`;
 
   const img = new Image(W, H);
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
@@ -45,26 +46,25 @@ async function makePinImage(
   return ctx.getImageData(0, 0, W * dpr, H * dpr);
 }
 
-/** Регистрирует все иконки пинов (обычные + приглушённые) до создания слоёв. */
+function pinIconId(kind: string, muted: boolean): string {
+  return `pin-${kind}${muted ? '-muted' : ''}`;
+}
+
+/** Регистрирует иконки для всех подкатегорий (обычные + приглушённые). */
 export async function registerPinImages(map: MLMap): Promise<void> {
   const jobs: Promise<void>[] = [];
-  for (const cat of CATEGORIES) {
-    const { color, emoji } = CATEGORY_META[cat];
+  for (const kind of Object.keys(KIND_META)) {
     for (const muted of [false, true]) {
-      const id = pinIconId(cat, muted);
+      const id = pinIconId(kind, muted);
       if (map.hasImage(id)) continue;
       jobs.push(
-        makePinImage(color, emoji, muted).then((data) => {
+        makePinImage(kindColor(kind), kindEmoji(kind), muted).then((data) => {
           if (!map.hasImage(id)) map.addImage(id, data, { pixelRatio: 2 });
         }),
       );
     }
   }
   await Promise.all(jobs);
-}
-
-function pinIconId(cat: TaskCategory, muted: boolean): string {
-  return `pin-${cat}${muted ? '-muted' : ''}`;
 }
 
 function toFeatureCollection(tasks: Task[], selectedId: string | null) {
@@ -79,18 +79,16 @@ function toFeatureCollection(tasks: Task[], selectedId: string | null) {
         geometry: { type: 'Point' as const, coordinates: [t.lon, t.lat] },
         properties: {
           id: t.id,
-          category: t.category,
           available,
           selected: t.id === selectedId,
-          icon: pinIconId(t.category, !available && !mine),
-          color: CATEGORY_META[t.category].color,
+          icon: pinIconId(t.kind, !available && !mine),
+          color: kindColor(t.kind),
         },
       };
     }),
   };
 }
 
-/** Создаёт источник и слои задач. Иконки должны быть уже зарегистрированы. */
 export function addTaskLayers(
   map: MLMap,
   tasks: Task[],
@@ -104,7 +102,6 @@ export function addTaskLayers(
     });
   }
 
-  // Мягкое свечение под свободными задачами (без анимации — бережём производительность).
   if (!map.getLayer(HALO_LAYER)) {
     map.addLayer({
       id: HALO_LAYER,
@@ -112,19 +109,9 @@ export function addTaskLayers(
       source: SOURCE,
       filter: ['==', ['get', 'available'], true],
       paint: {
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          12,
-          6,
-          16,
-          15,
-          18,
-          22,
-        ],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 15, 18, 22],
         'circle-color': ['get', 'color'],
-        'circle-opacity': 0.18,
+        'circle-opacity': 0.16,
         'circle-blur': 0.6,
         'circle-translate': [0, -30],
         'circle-translate-anchor': 'viewport',
@@ -142,8 +129,6 @@ export function addTaskLayers(
         'icon-anchor': 'bottom',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
-        // feature-state недопустим в layout-свойствах, поэтому подсветку выбора
-        // ведём через data-driven свойство `selected` в самой фиче.
         'icon-size': ['case', ['==', ['get', 'selected'], true], 1.25, 1],
       },
     });
@@ -162,15 +147,7 @@ export function addTaskLayers(
   }
 }
 
-/**
- * Обновляет данные источника при изменении списка/статусов задач
- * или выбранной задачи (выбранный пин отрисовывается крупнее).
- */
-export function updateTaskData(
-  map: MLMap,
-  tasks: Task[],
-  selectedId: string | null,
-): void {
+export function updateTaskData(map: MLMap, tasks: Task[], selectedId: string | null): void {
   const src = map.getSource(SOURCE) as GeoJSONSource | undefined;
   src?.setData(toFeatureCollection(tasks, selectedId));
 }
