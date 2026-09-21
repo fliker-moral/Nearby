@@ -271,7 +271,9 @@ const MapViewYandex = forwardRef<MapViewHandle, MapViewProps>(function MapViewYa
           <span className="map-loading__text">
             Карта Яндекса не загрузилась.
             <br />
-            Проверьте ключ VITE_YANDEX_API_KEY и привязку домена.
+            Проверьте ключ VITE_YANDEX_API_KEY и HTTP-referer.
+            <br />
+            Новый ключ может активироваться до 15+ минут.
           </span>
         </div>
       )}
