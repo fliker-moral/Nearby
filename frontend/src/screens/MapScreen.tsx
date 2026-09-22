@@ -56,7 +56,7 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
       />
 
       <div className="map-top">
-        <Header title={BRAND.name} subtitle={BRAND.tagline} city={BRAND.city} />
+        <Header title={BRAND.name} subtitle={BRAND.tagline} />
         <SearchBar
           value={props.search}
           placeholder={props.mode === 'help' ? 'Поиск по адресам и просьбам' : 'Поиск событий'}
