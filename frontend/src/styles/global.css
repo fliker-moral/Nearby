@@ -617,11 +617,19 @@ h2 {
   padding: 6px 18px 16px;
   animation: slide-up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
+.sheet:not(.sheet--expanded) {
+  /* даём жесту свайпа вниз работать (карточка-peek не прокручивается) */
+  touch-action: none;
+}
 .sheet--expanded {
   bottom: 0;
   max-height: 90%;
   overflow-y: auto;
   padding-bottom: calc(18px + var(--safe-bottom));
+}
+.sheet__grabber-btn {
+  touch-action: none;
+  cursor: grab;
 }
 @keyframes slide-up {
   from {

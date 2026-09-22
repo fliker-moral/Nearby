@@ -33,6 +33,7 @@ interface MapScreenProps {
   onUserLocation: (p: LngLat) => void;
   onToggleExpand: () => void;
   onCloseSheet: () => void;
+  onDismissSheet: () => void;
   onAssign: (t: Task) => void;
   onRoute: (t: Task) => void;
   onClearRoute: () => void;
@@ -107,6 +108,7 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
           routing={props.routing}
           onToggleExpand={props.onToggleExpand}
           onClose={props.onCloseSheet}
+          onDismiss={props.onDismissSheet}
           onAssign={props.onAssign}
           onRoute={props.onRoute}
         />

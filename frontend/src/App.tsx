@@ -27,6 +27,7 @@ export default function App() {
   const [kind, setKind] = useState<string | 'ALL'>('ALL');
   const [userLocation, setUserLocation] = useState<LngLat | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [peekDismissed, setPeekDismissed] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [routing, setRouting] = useState(false);
@@ -58,13 +59,14 @@ export default function App() {
     });
   }, [modeTasks, kind, search]);
 
-  // В режиме «помощь» всегда показываем карточку-peek: по умолчанию — ближайшая свободная.
+  // В режиме «помощь» по умолчанию показываем карточку-peek ближайшей просьбы,
+  // пока пользователь не смахнул её вниз (peekDismissed).
   useEffect(() => {
-    if (mode !== 'help') return;
+    if (mode !== 'help' || peekDismissed) return;
     if (selectedId && modeTasks.some((t) => t.id === selectedId)) return;
     const first = modeTasks.find((t) => t.status === 'PUBLISHED') ?? modeTasks[0];
     setSelectedId(first?.id ?? null);
-  }, [mode, modeTasks, selectedId]);
+  }, [mode, modeTasks, selectedId, peekDismissed]);
 
   const selected = useMemo(
     () => (selectedId ? tasks.find((t) => t.id === selectedId) ?? null : null),
@@ -75,6 +77,7 @@ export default function App() {
     setMode(m);
     setKind('ALL');
     setSheetExpanded(false);
+    setPeekDismissed(false);
     clearRoute();
     if (m === 'events') setSelectedId(null);
   };
@@ -86,11 +89,20 @@ export default function App() {
 
   const openTask = (t: Task) => {
     setSelectedId(t.id);
+    setPeekDismissed(false);
     setSheetExpanded(false);
     clearRoute();
     haptic('tap');
     if (tab !== 'map') setTab('map');
     requestAnimationFrame(() => mapRef.current?.flyTo({ lon: t.lon, lat: t.lat }));
+  };
+
+  const dismissPeek = () => {
+    setSheetExpanded(false);
+    setPeekDismissed(true);
+    setSelectedId(null);
+    clearRoute();
+    haptic('tap');
   };
 
   /** Текущее местоположение: из состояния, иначе геолокация, иначе центр демо. */
@@ -167,6 +179,7 @@ export default function App() {
           onUserLocation={setUserLocation}
           onToggleExpand={() => setSheetExpanded((v) => !v)}
           onCloseSheet={() => setSheetExpanded(false)}
+          onDismissSheet={dismissPeek}
           onAssign={handleAssign}
           onRoute={handleRoute}
           onClearRoute={clearRoute}

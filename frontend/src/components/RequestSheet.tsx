@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { STATUS_META } from '../config';
 import type { LngLat, Task } from '../types';
 import { distanceMeters, formatDistance, formatEta } from '../lib/geo';
@@ -21,6 +22,7 @@ interface RequestSheetProps {
   assigning: boolean;
   onToggleExpand: () => void;
   onClose: () => void;
+  onDismiss: () => void;
   onAssign: (task: Task) => void;
   onRoute: (task: Task) => void;
   routing: boolean;
@@ -37,6 +39,7 @@ export default function RequestSheet({
   assigning,
   onToggleExpand,
   onClose,
+  onDismiss,
   onAssign,
   onRoute,
   routing,
@@ -44,6 +47,53 @@ export default function RequestSheet({
   const status = STATUS_META[task.status];
   const available = task.status === 'PUBLISHED';
   const mine = task.status === 'IN_PROGRESS';
+
+  // Свайп вниз: в свёрнутом виде — убрать карточку, в развёрнутом — свернуть.
+  const startY = useRef<number | null>(null);
+  const moved = useRef(false);
+  const dragYRef = useRef(0);
+  const [dragY, setDragY] = useState(0);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    // Не начинаем свайп с интерактивных элементов (кнопки, шеврон).
+    const t = e.target as HTMLElement;
+    if (t.closest('.btn') || t.closest('.req-chevron') || t.closest('.sheet__close')) {
+      startY.current = null;
+      return;
+    }
+    startY.current = e.clientY;
+    moved.current = false;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* no-op */
+    }
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (startY.current == null) return;
+    const dy = e.clientY - startY.current;
+    if (dy > 4) {
+      moved.current = true;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (dy > 0) {
+      dragYRef.current = dy;
+      setDragY(dy);
+    }
+  };
+  const onPointerUp = () => {
+    if (startY.current == null) return;
+    const dy = dragYRef.current;
+    startY.current = null;
+    dragYRef.current = 0;
+    setDragY(0);
+    if (dy > 80) {
+      if (expanded) onToggleExpand();
+      else onDismiss();
+    }
+  };
+  const dragHandlers = { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp };
 
   const distM =
     task.distance_m ??
@@ -66,8 +116,20 @@ export default function RequestSheet({
   return (
     <>
       {expanded && <div className="sheet-backdrop" onClick={onToggleExpand} />}
-      <div className={`sheet${expanded ? ' sheet--expanded' : ''}`} role="dialog">
-        <button className="sheet__grabber-btn" onClick={onToggleExpand} aria-label="Развернуть">
+      <div
+        className={`sheet${expanded ? ' sheet--expanded' : ''}`}
+        role="dialog"
+        style={dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined}
+        {...(!expanded ? dragHandlers : {})}
+      >
+        <button
+          className="sheet__grabber-btn"
+          onClick={() => {
+            if (!moved.current) onToggleExpand();
+          }}
+          {...(expanded ? dragHandlers : {})}
+          aria-label="Свернуть или убрать"
+        >
           <span className="sheet__grabber" />
         </button>
         {expanded && (
