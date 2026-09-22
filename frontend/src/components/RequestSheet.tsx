@@ -7,6 +7,7 @@ import {
   CloseIcon,
   NavArrowIcon,
   PinIcon,
+  RouteIcon,
   ShieldIcon,
   StarIcon,
   WalletIcon,
@@ -21,6 +22,8 @@ interface RequestSheetProps {
   onToggleExpand: () => void;
   onClose: () => void;
   onAssign: (task: Task) => void;
+  onRoute: (task: Task) => void;
+  routing: boolean;
 }
 
 function authorLine(t: Task): string {
@@ -35,6 +38,8 @@ export default function RequestSheet({
   onToggleExpand,
   onClose,
   onAssign,
+  onRoute,
+  routing,
 }: RequestSheetProps) {
   const status = STATUS_META[task.status];
   const available = task.status === 'PUBLISHED';
@@ -161,6 +166,11 @@ export default function RequestSheet({
                 <span>Это защищает пользователей</span>
               </div>
             </div>
+
+            <button className="btn btn--route" disabled={routing} onClick={() => onRoute(task)}>
+              <RouteIcon width={20} height={20} />
+              {routing ? 'Строю маршрут…' : 'Построить пеший маршрут'}
+            </button>
           </>
         )}
 

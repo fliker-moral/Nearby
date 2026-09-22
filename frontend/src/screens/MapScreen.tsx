@@ -9,6 +9,10 @@ import RequestSheet from '../components/RequestSheet';
 import EventCard from '../components/EventCard';
 import { BRAND, type Mode } from '../config';
 import type { LngLat, Task } from '../types';
+import type { RouteResult } from '../lib/routing';
+import { formatDuration } from '../lib/routing';
+import { formatDistance } from '../lib/geo';
+import { RouteIcon, CloseIcon } from '../components/icons';
 
 interface MapScreenProps {
   mode: Mode;
@@ -20,6 +24,8 @@ interface MapScreenProps {
   kind: string | 'ALL';
   source: 'api' | 'mock' | 'loading';
   assigning: boolean;
+  routing: boolean;
+  routeInfo: RouteResult | null;
   onMode: (m: Mode) => void;
   onSearch: (v: string) => void;
   onKind: (v: string | 'ALL') => void;
@@ -28,6 +34,8 @@ interface MapScreenProps {
   onToggleExpand: () => void;
   onCloseSheet: () => void;
   onAssign: (t: Task) => void;
+  onRoute: (t: Task) => void;
+  onClearRoute: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onLocate: () => void;
@@ -71,15 +79,37 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
         </div>
       )}
 
-      {props.mode === 'help' && props.selected && (
+      {props.mode === 'help' && props.routeInfo && (
+        <div className="route-banner">
+          <span className="route-banner__ic">
+            <RouteIcon width={20} height={20} />
+          </span>
+          <span className="route-banner__text">
+            <b>
+              🚶 {formatDuration(props.routeInfo.duration_s)} ·{' '}
+              {formatDistance(props.routeInfo.distance_m)}
+            </b>
+            <span>
+              {props.routeInfo.fallback ? 'примерно (прямая линия)' : 'пеший маршрут до просьбы'}
+            </span>
+          </span>
+          <button className="route-banner__close" onClick={props.onClearRoute} aria-label="Убрать маршрут">
+            <CloseIcon width={18} height={18} />
+          </button>
+        </div>
+      )}
+
+      {props.mode === 'help' && props.selected && !props.routeInfo && (
         <RequestSheet
           task={props.selected}
           userLocation={props.userLocation}
           expanded={props.sheetExpanded}
           assigning={props.assigning}
+          routing={props.routing}
           onToggleExpand={props.onToggleExpand}
           onClose={props.onCloseSheet}
           onAssign={props.onAssign}
+          onRoute={props.onRoute}
         />
       )}
 

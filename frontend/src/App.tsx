@@ -9,7 +9,8 @@ import Toast, { type ToastData } from './components/Toast';
 
 import { useTasks } from './hooks/useTasks';
 import { initMax, haptic } from './lib/maxBridge';
-import { KIND_META, type Mode } from './config';
+import { fetchWalkingRoute, type RouteResult } from './lib/routing';
+import { DEFAULT_CENTER, KIND_META, type Mode } from './config';
 import type { LngLat, Task } from './types';
 
 function taskMode(t: Task): Mode {
@@ -28,6 +29,8 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [routing, setRouting] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<RouteResult | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
 
   useEffect(() => {
@@ -72,15 +75,51 @@ export default function App() {
     setMode(m);
     setKind('ALL');
     setSheetExpanded(false);
+    clearRoute();
     if (m === 'events') setSelectedId(null);
+  };
+
+  const clearRoute = () => {
+    mapRef.current?.clearRoute();
+    setRouteInfo(null);
   };
 
   const openTask = (t: Task) => {
     setSelectedId(t.id);
     setSheetExpanded(false);
+    clearRoute();
     haptic('tap');
     if (tab !== 'map') setTab('map');
     requestAnimationFrame(() => mapRef.current?.flyTo({ lon: t.lon, lat: t.lat }));
+  };
+
+  /** Текущее местоположение: из состояния, иначе геолокация, иначе центр демо. */
+  const resolveLocation = (): Promise<LngLat> =>
+    new Promise((resolve) => {
+      if (userLocation) return resolve(userLocation);
+      if (!navigator.geolocation) {
+        return resolve({ lon: DEFAULT_CENTER[0], lat: DEFAULT_CENTER[1] });
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const p = { lon: pos.coords.longitude, lat: pos.coords.latitude };
+          setUserLocation(p);
+          resolve(p);
+        },
+        () => resolve({ lon: DEFAULT_CENTER[0], lat: DEFAULT_CENTER[1] }),
+        { enableHighAccuracy: true, timeout: 8000 },
+      );
+    });
+
+  const handleRoute = async (t: Task) => {
+    setRouting(true);
+    const from = await resolveLocation();
+    const route = await fetchWalkingRoute(from, { lon: t.lon, lat: t.lat });
+    mapRef.current?.showRoute(route.coords);
+    setRouteInfo(route);
+    setRouting(false);
+    setSheetExpanded(false);
+    haptic('tap');
   };
 
   const handleAssign = async (t: Task) => {
@@ -119,6 +158,8 @@ export default function App() {
           kind={kind}
           source={source}
           assigning={assigning}
+          routing={routing}
+          routeInfo={routeInfo}
           onMode={changeMode}
           onSearch={setSearch}
           onKind={setKind}
@@ -127,6 +168,8 @@ export default function App() {
           onToggleExpand={() => setSheetExpanded((v) => !v)}
           onCloseSheet={() => setSheetExpanded(false)}
           onAssign={handleAssign}
+          onRoute={handleRoute}
+          onClearRoute={clearRoute}
           onZoomIn={() => mapRef.current?.zoomIn()}
           onZoomOut={() => mapRef.current?.zoomOut()}
           onLocate={() => mapRef.current?.locate()}

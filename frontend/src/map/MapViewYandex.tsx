@@ -76,6 +76,7 @@ const MapViewYandex = forwardRef<MapViewHandle, YandexProps>(function MapViewYan
   const ymRef = useRef<Ymaps3>(null);
   const markersRef = useRef<Map<string, Entry>>(new Map());
   const userMarkerRef = useRef<any>(null);
+  const routeRef = useRef<any>(null);
   const cameraRef = useRef<{ center: [number, number]; zoom: number }>({
     center: DEFAULT_CENTER,
     zoom: DEFAULT_ZOOM,
@@ -263,6 +264,43 @@ const MapViewYandex = forwardRef<MapViewHandle, YandexProps>(function MapViewYan
       }),
     resize: () => {
       /* ymaps3 сам отслеживает размер контейнера */
+    },
+    showRoute: (coords) => {
+      const map = mapRef.current;
+      const ymaps3 = ymRef.current;
+      if (!map || !ymaps3 || coords.length < 2) return;
+      const geometry = { type: 'LineString', coordinates: coords };
+      const style = { stroke: [{ color: '#2e6bf6', width: 6 }] };
+      if (routeRef.current) {
+        routeRef.current.update({ geometry });
+      } else {
+        routeRef.current = new ymaps3.YMapFeature({ geometry, style });
+        map.addChild(routeRef.current);
+      }
+      // Вписываем маршрут в кадр.
+      let minLon = Infinity,
+        minLat = Infinity,
+        maxLon = -Infinity,
+        maxLat = -Infinity;
+      for (const [lon, lat] of coords) {
+        minLon = Math.min(minLon, lon);
+        maxLon = Math.max(maxLon, lon);
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+      }
+      map.setLocation({
+        bounds: [
+          [minLon, maxLat],
+          [maxLon, minLat],
+        ],
+        duration: 500,
+      });
+    },
+    clearRoute: () => {
+      if (routeRef.current && mapRef.current) {
+        mapRef.current.removeChild(routeRef.current);
+      }
+      routeRef.current = null;
     },
   }));
 

@@ -7,6 +7,10 @@ export interface MapViewHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   resize: () => void;
+  /** Нарисовать линию маршрута [lon,lat][] и вписать её в кадр. */
+  showRoute: (coords: [number, number][]) => void;
+  /** Убрать нарисованный маршрут. */
+  clearRoute: () => void;
 }
 
 export interface MapViewProps {

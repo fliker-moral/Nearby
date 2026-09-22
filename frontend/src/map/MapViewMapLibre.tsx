@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import maplibregl, { Map as MLMap, Marker } from 'maplibre-gl';
+import maplibregl, { Map as MLMap, Marker, GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { DEFAULT_CENTER, DEFAULT_ZOOM, MAP_STYLE_URL } from '../config';
@@ -117,6 +117,51 @@ const MapViewMapLibre = forwardRef<MapViewHandle, MapViewProps>(function MapView
     zoomIn: () => mapRef.current?.zoomIn({ duration: 300 }),
     zoomOut: () => mapRef.current?.zoomOut({ duration: 300 }),
     resize: () => mapRef.current?.resize(),
+    showRoute: (coords) => {
+      const map = mapRef.current;
+      if (!map || !readyRef.current || coords.length < 2) return;
+      const data = {
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: coords },
+        properties: {},
+      };
+      const src = map.getSource('route') as GeoJSONSource | undefined;
+      if (src) {
+        src.setData(data);
+      } else {
+        map.addSource('route', { type: 'geojson', data });
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#2e6bf6', 'line-width': 6, 'line-opacity': 0.9 },
+        });
+      }
+      let minLon = Infinity,
+        minLat = Infinity,
+        maxLon = -Infinity,
+        maxLat = -Infinity;
+      for (const [lon, lat] of coords) {
+        minLon = Math.min(minLon, lon);
+        maxLon = Math.max(maxLon, lon);
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+      }
+      map.fitBounds(
+        [
+          [minLon, minLat],
+          [maxLon, maxLat],
+        ],
+        { padding: { top: 200, bottom: 300, left: 60, right: 60 }, duration: 500 },
+      );
+    },
+    clearRoute: () => {
+      const map = mapRef.current;
+      if (!map) return;
+      if (map.getLayer('route-line')) map.removeLayer('route-line');
+      if (map.getSource('route')) map.removeSource('route');
+    },
   }));
 
   return (
