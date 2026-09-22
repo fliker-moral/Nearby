@@ -34,9 +34,6 @@ export default function KindChips({ mode, value, onChange }: KindChipsProps) {
           </button>
         );
       })}
-      <button className="chip chip--more" aria-label="Ещё">
-        •••
-      </button>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { getCurrentUser } from '../lib/maxBridge';
 import type { Task } from '../types';
-import { FlameIcon, StarIcon, ChevronRightIcon } from '../components/icons';
+import { FlameIcon, StarIcon } from '../components/icons';
 
 interface ProfileScreenProps {
   tasks: Task[];
@@ -59,21 +59,17 @@ export default function ProfileScreen({ tasks }: ProfileScreenProps) {
         </div>
       </div>
 
-      <button className="promo-banner">
+      <div className="promo-banner">
         <FlameIcon width={22} height={22} className="promo-banner__flame" />
         <div>
           <b>Вы помогаете людям</b>
           <span>И делаете город добрее</span>
         </div>
-        <ChevronRightIcon width={20} height={20} />
-      </button>
+      </div>
 
       <section className="profile-section">
         <div className="section-head">
           <h2>Достижения</h2>
-          <button className="section-head__link">
-            Все <ChevronRightIcon width={14} height={14} />
-          </button>
         </div>
         <div className="ach-grid">
           {ACHIEVEMENTS.map((a) => (

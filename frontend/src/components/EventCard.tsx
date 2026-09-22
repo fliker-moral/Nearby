@@ -1,6 +1,6 @@
 import { KIND_META } from '../config';
 import type { Task } from '../types';
-import { CalendarIcon, HeartIcon, PinIcon, UsersIcon } from './icons';
+import { CalendarIcon, PinIcon, UsersIcon } from './icons';
 
 interface EventCardProps {
   event: Task;
@@ -20,9 +20,6 @@ export default function EventCard({ event, onOpen }: EventCardProps) {
       <div className="event-card__body">
         <div className="event-card__top">
           <span className="event-tag">{meta?.label}</span>
-          <span className="event-card__fav" aria-hidden>
-            <HeartIcon width={18} height={18} />
-          </span>
         </div>
         <span className="event-card__title">{event.title}</span>
         <span className="event-card__desc">{event.description}</span>
