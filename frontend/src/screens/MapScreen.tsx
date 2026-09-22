@@ -72,9 +72,8 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
         onLocate={props.onLocate}
       />
 
-      {props.mode === 'help' && props.source === 'mock' && (
+      {props.mode === 'help' && !props.sheetExpanded && !props.routeInfo && (
         <div className="map-hint">
-          <span className="badge badge--demo">demo</span>
           <span className="badge">🟢 {available} свободных рядом</span>
         </div>
       )}
