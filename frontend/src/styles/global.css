@@ -290,14 +290,29 @@ h2 {
   font-size: 15px;
 }
 
-/* Чипы */
+/* Чипы — горизонтальная лента во всю ширину */
+.chips-wrap {
+  position: relative;
+  margin: 0 -14px;
+}
+.chips-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(238, 241, 246, 0), var(--bg));
+}
 .chips {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding-bottom: 2px;
-  margin: 0 -2px;
+  padding: 2px 14px;
+  scroll-padding-inline: 14px;
+  -webkit-overflow-scrolling: touch;
 }
 .chips::-webkit-scrollbar {
   display: none;
