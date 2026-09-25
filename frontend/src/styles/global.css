@@ -415,30 +415,22 @@ h2 {
   cursor: pointer;
   transform: translate(-50%, -100%);
 }
-.ya-pin__inner {
-  position: relative;
+.ya-pin__img {
   display: block;
-  width: 40px;
-  height: 52px;
+  height: 50px;
+  width: auto;
   transform-origin: bottom center;
   transition: transform 0.15s ease;
   filter: drop-shadow(0 4px 6px rgba(18, 23, 42, 0.3));
-}
-.ya-pin__glyph {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 40px;
-  height: 37px;
-  display: grid;
-  place-items: center;
-  font-size: 15px;
   pointer-events: none;
 }
-.ya-pin--selected .ya-pin__inner {
-  transform: scale(1.22);
+.ya-pin--muted .ya-pin__img {
+  opacity: 0.5;
 }
-.ya-pin:active .ya-pin__inner {
+.ya-pin--selected .ya-pin__img {
+  transform: scale(1.2);
+}
+.ya-pin:active .ya-pin__img {
   transform: scale(0.92);
 }
 .user-marker {

@@ -10,60 +10,23 @@ function kindColor(kind: string): string {
   const meta = KIND_META[kind];
   return MODE_COLOR[meta ? meta.mode : 'help'];
 }
-function kindEmoji(kind: string): string {
-  return KIND_META[kind]?.emoji ?? '📍';
+
+function pinIconId(kind: string): string {
+  return `pin-${kind}`;
 }
 
-/** Рисуем пин-«каплю» с иконкой подкатегории. */
-async function makePinImage(color: string, emoji: string, muted: boolean): Promise<ImageData> {
-  const W = 44;
-  const H = 56;
-  const dpr = 2;
-  const fill = muted ? '#aab3c2' : color;
-
-  const svg =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}'>` +
-    `<path d='M22 3 C13 3 6 10 6 19 C6 31 22 52 22 52 C22 52 38 31 38 19 C38 10 31 3 22 3 Z' ` +
-    `fill='${fill}' stroke='white' stroke-width='3'/>` +
-    `<circle cx='22' cy='19' r='10' fill='white'/></svg>`;
-
-  const img = new Image(W, H);
-  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  await img.decode();
-
-  const cvs = document.createElement('canvas');
-  cvs.width = W * dpr;
-  cvs.height = H * dpr;
-  const ctx = cvs.getContext('2d')!;
-  ctx.scale(dpr, dpr);
-  ctx.drawImage(img, 0, 0, W, H);
-  ctx.font = '14px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.globalAlpha = muted ? 0.8 : 1;
-  ctx.fillText(emoji, 22, 19);
-
-  return ctx.getImageData(0, 0, W * dpr, H * dpr);
-}
-
-function pinIconId(kind: string, muted: boolean): string {
-  return `pin-${kind}${muted ? '-muted' : ''}`;
-}
-
-/** Регистрирует иконки для всех подкатегорий (обычные + приглушённые). */
+/** Регистрирует кастомные иконки-метки (PNG из /public/pins) для всех подкатегорий. */
 export async function registerPinImages(map: MLMap): Promise<void> {
-  const jobs: Promise<void>[] = [];
-  for (const kind of Object.keys(KIND_META)) {
-    for (const muted of [false, true]) {
-      const id = pinIconId(kind, muted);
-      if (map.hasImage(id)) continue;
-      jobs.push(
-        makePinImage(kindColor(kind), kindEmoji(kind), muted).then((data) => {
-          if (!map.hasImage(id)) map.addImage(id, data, { pixelRatio: 2 });
-        }),
-      );
+  const jobs = Object.keys(KIND_META).map(async (kind) => {
+    const id = pinIconId(kind);
+    if (map.hasImage(id)) return;
+    try {
+      const img = await map.loadImage(`pins/${kind}.png`);
+      if (!map.hasImage(id)) map.addImage(id, img.data, { pixelRatio: 2.3 });
+    } catch (e) {
+      console.warn('не удалось загрузить метку', kind, e);
     }
-  }
+  });
   await Promise.all(jobs);
 }
 
@@ -80,8 +43,9 @@ function toFeatureCollection(tasks: Task[], selectedId: string | null) {
         properties: {
           id: t.id,
           available,
+          dim: !available && !mine,
           selected: t.id === selectedId,
-          icon: pinIconId(t.kind, !available && !mine),
+          icon: pinIconId(t.kind),
           color: kindColor(t.kind),
         },
       };
@@ -129,7 +93,10 @@ export function addTaskLayers(
         'icon-anchor': 'bottom',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
-        'icon-size': ['case', ['==', ['get', 'selected'], true], 1.25, 1],
+        'icon-size': ['case', ['==', ['get', 'selected'], true], 1.2, 1],
+      },
+      paint: {
+        'icon-opacity': ['case', ['==', ['get', 'dim'], true], 0.5, 1],
       },
     });
 
