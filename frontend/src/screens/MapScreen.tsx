@@ -43,8 +43,6 @@ interface MapScreenProps {
 }
 
 const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(props, ref) {
-  const available = props.visibleTasks.filter((t) => t.status === 'PUBLISHED').length;
-
   return (
     <div className="screen screen--map">
       <MapView
@@ -72,12 +70,6 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
         onZoomOut={props.onZoomOut}
         onLocate={props.onLocate}
       />
-
-      {props.mode === 'help' && props.selected && !props.sheetExpanded && !props.routeInfo && (
-        <div className="map-hint">
-          <span className="badge">🟢 {available} свободных рядом</span>
-        </div>
-      )}
 
       {props.mode === 'help' && props.routeInfo && (
         <div className="route-banner">
