@@ -73,7 +73,7 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
         onLocate={props.onLocate}
       />
 
-      {props.mode === 'help' && !props.sheetExpanded && !props.routeInfo && (
+      {props.mode === 'help' && props.selected && !props.sheetExpanded && !props.routeInfo && (
         <div className="map-hint">
           <span className="badge">🟢 {available} свободных рядом</span>
         </div>
