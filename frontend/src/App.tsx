@@ -7,6 +7,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import BottomNav, { type Tab } from './components/BottomNav';
 import Toast, { type ToastData } from './components/Toast';
 
+import ApplicantApp from './applicant/ApplicantApp';
 import { useTasks } from './hooks/useTasks';
 import { initMax, haptic } from './lib/maxBridge';
 import { fetchWalkingRoute, type RouteResult } from './lib/routing';
@@ -17,7 +18,25 @@ function taskMode(t: Task): Mode {
   return KIND_META[t.kind]?.mode ?? 'help';
 }
 
+type Role = 'volunteer' | 'applicant';
+
 export default function App() {
+  const [role, setRole] = useState<Role>(() => {
+    try {
+      return (localStorage.getItem('nearby.role') as Role) || 'volunteer';
+    } catch {
+      return 'volunteer';
+    }
+  });
+  const switchRole = (r: Role) => {
+    try {
+      localStorage.setItem('nearby.role', r);
+    } catch {
+      /* ignore */
+    }
+    setRole(r);
+  };
+
   const { tasks, source, assign } = useTasks();
   const mapRef = useRef<MapViewHandle>(null);
 
@@ -156,6 +175,10 @@ export default function App() {
   );
   const activeCount = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
 
+  if (role === 'applicant') {
+    return <ApplicantApp onSwitchRole={() => switchRole('volunteer')} />;
+  }
+
   return (
     <div className="app">
       <div className={`screen-slot${tab === 'map' ? '' : ' screen-slot--hidden'}`}>
@@ -190,7 +213,9 @@ export default function App() {
       </div>
 
       {tab === 'myhelp' && <MyHelpScreen tasks={myTasks} onOpen={openTask} />}
-      {tab === 'profile' && <ProfileScreen tasks={tasks} />}
+      {tab === 'profile' && (
+        <ProfileScreen tasks={tasks} onSwitchRole={() => switchRole('applicant')} />
+      )}
 
       <Toast toast={toast} onDone={() => setToast(null)} />
 

@@ -4,6 +4,7 @@ import { FlameIcon, StarIcon } from '../components/icons';
 
 interface ProfileScreenProps {
   tasks: Task[];
+  onSwitchRole: () => void;
 }
 
 const ACHIEVEMENTS = [
@@ -15,7 +16,7 @@ const ACHIEVEMENTS = [
   { emoji: '🌿', title: 'Экоактивист', progress: '1/5', done: false },
 ];
 
-export default function ProfileScreen({ tasks }: ProfileScreenProps) {
+export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProps) {
   const user = getCurrentUser();
   const done = tasks.filter((t) => t.status === 'COMPLETED').length + 27;
   const level = 4;
@@ -96,6 +97,10 @@ export default function ProfileScreen({ tasks }: ProfileScreenProps) {
           <span className="muted">присоединились 1 245 волонтёров</span>
         </div>
       </section>
+
+      <button className="btn btn--switch-role" onClick={onSwitchRole}>
+        👵 Мне нужна помощь — перейти в режим заявителя
+      </button>
 
       <p className="profile-foot">
         «Помощь рядом» — забота о пожилых людях силами волонтёров.
