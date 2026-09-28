@@ -5,6 +5,7 @@ import { useApplicant } from './useApplicant';
 import type { MyRequest } from './types';
 import CreateRequest from './CreateRequest';
 import RequestDetail from './RequestDetail';
+import Toast, { type ToastData } from '../components/Toast';
 import { PlusIcon, ChevronRightIcon, ListIcon, ProfileIcon } from '../components/icons';
 
 const DEFAULT_ADDRESS = 'ул. Ленина, 15, кв. 12';
@@ -31,6 +32,7 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
   const [tab, setTab] = useState<'home' | 'profile'>('home');
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastData | null>(null);
   const user = getCurrentUser();
 
   const open = openId ? app.requests.find((r) => r.id === openId) ?? null : null;
@@ -151,8 +153,20 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
           onDecline={app.declineOffer}
           onComplete={app.completeRequest}
           onReview={app.submitReview}
+          onReport={(id) => {
+            app.declineOffer(id);
+            setOpenId(null);
+            setToast({ id: Date.now(), message: 'Жалоба отправлена. Ищем другого волонтёра', kind: 'success' });
+          }}
+          onCancel={(id) => {
+            app.cancelRequest(id);
+            setOpenId(null);
+            setToast({ id: Date.now(), message: 'Просьба отменена', kind: 'info' });
+          }}
         />
       )}
+
+      <Toast toast={toast} onDone={() => setToast(null)} />
     </div>
   );
 }

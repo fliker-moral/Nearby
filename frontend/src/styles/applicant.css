@@ -579,3 +579,98 @@
 .a-star--on {
   color: var(--gold);
 }
+
+/* Предупреждение о далёком волонтёре */
+.a-warn {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1.5px solid #fecaca;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  margin-bottom: 14px;
+}
+.a-unverified {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fff7ed;
+  padding: 4px 10px;
+  border-radius: 999px;
+  align-self: flex-start;
+}
+
+/* Вторичные действия (жалоба / отмена) */
+.a-secondary {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 16px;
+}
+.a-secondary button {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 8px;
+}
+.a-secondary button:active {
+  opacity: 0.6;
+}
+
+/* Опасные кнопки */
+.a-btn--danger {
+  background: var(--coral);
+  color: #fff;
+  margin-top: 20px;
+}
+.a-btn--danger:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.a-btn--danger-text {
+  color: var(--coral);
+}
+
+/* Жалоба — список причин */
+.a-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.a-reason {
+  text-align: left;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.a-reason--on {
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+/* Подтверждение отмены */
+.a-confirm {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 20px 10px;
+}
+.a-confirm__ic {
+  font-size: 48px;
+}
+.a-confirm b {
+  font-size: 22px;
+}
+.a-confirm span {
+  font-size: 16px;
+  color: var(--ink-2);
+  max-width: 300px;
+  line-height: 1.45;
+}
