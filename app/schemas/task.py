@@ -89,5 +89,11 @@ class TaskMapItem(BaseModel):
     lon: float
 
 
+class MonthlyStat(BaseModel):
+    month: str
+    participants: int
+    completed_tasks: int
+
+
 class ModerationRejectRequest(BaseModel):
     comment: str = Field(min_length=3, max_length=2000)

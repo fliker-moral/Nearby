@@ -1,103 +1,67 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { MyRequest } from './types';
-import { INITIAL_REQUESTS, VOLUNTEERS } from './data';
+import { cancelAuthoredTask, closeAuthoredTask, createAuthoredTask, listAuthoredTasks, reviewTask } from '../api/client';
+import type { Task } from '../types';
 
-const KEY = 'nearby.applicant.requests';
-
-function load(): MyRequest[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as MyRequest[];
-  } catch {
-    /* ignore */
-  }
-  return INITIAL_REQUESTS;
-}
-
-function save(list: MyRequest[]) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(list));
-  } catch {
-    /* ignore */
-  }
-}
-
-function randomVolunteer() {
-  return VOLUNTEERS[Math.floor(Math.random() * VOLUNTEERS.length)];
-}
+const statusOf = (task: Task): MyRequest['status'] =>
+  task.status === 'IN_PROGRESS' ? 'in_progress' : task.status === 'COMPLETED' || task.status === 'CLOSED' ? 'done' : 'searching';
+const fromTask = (task: Task): MyRequest => ({
+  id: task.id, kind: task.kind, title: task.title, description: task.description,
+  address: task.address_text ?? task.address_hint, when: new Date(task.created_at).toLocaleString('ru-RU'),
+  createdAt: task.created_at, status: statusOf(task), reviewed: false,
+});
 
 export function useApplicant() {
-  const [requests, setRequests] = useState<MyRequest[]>(load);
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [requests, setRequests] = useState<MyRequest[]>([]);
 
-  useEffect(() => save(requests), [requests]);
+  useEffect(() => {
+    listAuthoredTasks().then((items) => {
+      setRequests(items.map(fromTask));
+    }).catch(() => setRequests([]));
+  }, []);
 
   const patch = useCallback((id: string, upd: Partial<MyRequest>) => {
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, ...upd } : r)));
   }, []);
 
-  /** Имитируем, что через несколько секунд находится волонтёр. */
-  const scheduleMatch = useCallback(
-    (id: string) => {
-      clearTimeout(timers.current[id]);
-      timers.current[id] = setTimeout(() => {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r.id === id && r.status === 'searching'
-              ? { ...r, status: 'offer', volunteer: randomVolunteer() }
-              : r,
-          ),
-        );
-      }, 3500);
+  const createRequest = useCallback(
+    (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when'>) => {
+      const promise = createAuthoredTask({ title: data.title, description: data.description, category: 'PERSONAL_HELP', address_hint: data.address, address_text: data.address, lat: 55.7512, lon: 37.6183 });
+      promise.then((task) => { setRequests((prev) => [fromTask(task), ...prev]); });
+      return `pending-${Date.now()}`;
     },
     [],
   );
 
-  // При старте подберём волонтёра для всех «ищущих» просьб.
-  useEffect(() => {
-    requests.forEach((r) => {
-      if (r.status === 'searching') scheduleMatch(r.id);
-    });
-    return () => {
-      Object.values(timers.current).forEach(clearTimeout);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const createRequest = useCallback(
-    (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when'>) => {
-      const id = `r${Date.now()}`;
-      const req: MyRequest = {
-        id,
-        ...data,
-        createdAt: new Date().toISOString(),
-        status: 'searching',
-      };
-      setRequests((prev) => [req, ...prev]);
-      scheduleMatch(id);
-      return id;
-    },
-    [scheduleMatch],
-  );
-
-  const acceptOffer = useCallback((id: string) => patch(id, { status: 'in_progress' }), [patch]);
+  const acceptOffer = useCallback((_id: string) => undefined, []);
 
   const declineOffer = useCallback(
     (id: string) => {
-      patch(id, { status: 'searching', volunteer: undefined });
-      scheduleMatch(id);
+    patch(id, { status: 'searching' });
     },
-    [patch, scheduleMatch],
+    [patch],
   );
 
-  const completeRequest = useCallback((id: string) => patch(id, { status: 'done' }), [patch]);
+  const completeRequest = useCallback((id: string) => {
+    closeAuthoredTask(id).then((task) => patch(id, fromTask(task)));
+  }, [patch]);
 
-  const submitReview = useCallback((id: string) => patch(id, { reviewed: true }), [patch]);
+  const submitReview = useCallback((id: string, score: number, tags: string[]) => {
+    const mappedTags = tags.flatMap((tag) => {
+      if (tag === 'Быстро откликнулся') return ['fast'];
+      if (tag === 'Был вежливым') return ['kindness'];
+      if (tag === 'Пришёл вовремя') return ['punctuality'];
+      if (tag === 'Всё сделал аккуратно') return ['carefulness'];
+      if (tag === 'Держал в курсе') return ['communication'];
+      if (tag === 'Очень помог') return ['reliability'];
+      return [];
+    });
+    reviewTask(id, score, undefined, mappedTags).then(() => patch(id, { reviewed: true }));
+  }, [patch]);
 
   const cancelRequest = useCallback((id: string) => {
-    clearTimeout(timers.current[id]);
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-  }, []);
+    cancelAuthoredTask(id).then((task) => patch(id, fromTask(task)));
+  }, [patch]);
 
   return {
     requests,

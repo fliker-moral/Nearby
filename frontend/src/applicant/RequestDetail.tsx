@@ -17,7 +17,7 @@ interface RequestDetailProps {
   onAccept: (id: string) => void;
   onDecline: (id: string) => void;
   onComplete: (id: string) => void;
-  onReview: (id: string) => void;
+  onReview: (id: string, score: number, tags: string[]) => void;
   onReport: (id: string, reason: string) => void;
   onCancel: (id: string) => void;
   onContact: (id: string) => void;
@@ -74,7 +74,7 @@ export default function RequestDetail({
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
   const sendReview = () => {
-    onReview(r.id);
+    onReview(r.id, score, tags);
     setThanked(true);
   };
 

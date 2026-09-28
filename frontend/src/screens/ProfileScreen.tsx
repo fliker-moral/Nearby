@@ -1,4 +1,6 @@
 import { getCurrentUser } from '../lib/maxBridge';
+import { fetchMonthlyStats, fetchProfile, type ProfileData } from '../api/client';
+import { useEffect, useState } from 'react';
 import type { Task } from '../types';
 import { FlameIcon, StarIcon } from '../components/icons';
 
@@ -16,12 +18,24 @@ const ACHIEVEMENTS = [
   { emoji: '🌿', title: 'Экоактивист', progress: '1/5', done: false },
 ];
 
+const QUALITY_TAGS = [
+  ['fast', 'Быстро приехал'],
+  ['kindness', 'Вежливость'],
+  ['punctuality', 'Пунктуальность'],
+  ['carefulness', 'Аккуратность'],
+  ['communication', 'Хорошее общение'],
+  ['reliability', 'Надёжность'],
+] as const;
+
 export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProps) {
   const user = getCurrentUser();
-  const done = tasks.filter((t) => t.status === 'COMPLETED').length + 27;
-  const level = 4;
-  const xp = 760;
-  const xpMax = 1000;
+  const done = tasks.filter((t) => t.status === 'COMPLETED' || t.status === 'CLOSED').length;
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [month, setMonth] = useState<{ month: string; participants: number; completed_tasks: number } | null>(null);
+  useEffect(() => {
+    fetchProfile().then(setProfile).catch(() => undefined);
+    fetchMonthlyStats().then((items) => setMonth(items[0] ?? null)).catch(() => undefined);
+  }, []);
 
   return (
     <div className="screen screen--list screen--profile">
@@ -36,10 +50,10 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
           <span className="profile-role">Надёжный помощник</span>
           <div className="level-bar">
             <div className="level-bar__track">
-              <span style={{ width: `${(xp / xpMax) * 100}%` }} />
+              <span style={{ width: `${Math.min(done * 10, 100)}%` }} />
             </div>
             <span className="level-bar__label">
-              {level} уровень · {xp}/{xpMax} XP
+              {done > 0 ? `${done} выполнено` : 'Новый волонтёр'}
             </span>
           </div>
         </div>
@@ -51,14 +65,29 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
           <span>добрых дел</span>
         </div>
         <div className="summary-tile">
-          <b>14 ч</b>
-          <span>волонтёрства</span>
+          <b>—</b>
+          <span>часов волонтёрства</span>
         </div>
         <div className="summary-tile">
-          <b>4.9</b>
+          <b>{profile?.rating_count ? profile.rating_score.toFixed(1) : '—'}</b>
           <span>рейтинг</span>
         </div>
       </div>
+
+      <section className="quality-section" aria-label="Отметки от людей">
+        <div className="section-head">
+          <h2>Отметки от людей</h2>
+          <span className="muted">{profile?.rating_count ?? 0} отзывов</span>
+        </div>
+        <div className="quality-list">
+          {QUALITY_TAGS.map(([key, label]) => (
+            <div className="quality-item" key={key}>
+              <span>{label}</span>
+              <b>{profile?.quality_tags?.[key] ?? 0}</b>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="promo-banner">
         <FlameIcon width={22} height={22} className="promo-banner__flame" />
@@ -88,13 +117,13 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
           <span className="challenge__badge">Добрая Москва</span>
           <StarIcon width={16} height={16} className="challenge__star" />
         </div>
-        <h2>Цель сентября — помочь 5 000 людям</h2>
+        <h2>{month ? `Статистика за ${month.month}` : 'Статистика появится после первых заявок'}</h2>
         <div className="challenge__bar">
-          <span style={{ width: '77%' }} />
+          <span style={{ width: month ? '100%' : '0%' }} />
         </div>
         <div className="challenge__meta">
-          <span>3 842 / 5 000</span>
-          <span className="muted">присоединились 1 245 волонтёров</span>
+          <span>{month?.completed_tasks ?? 0} выполнено</span>
+          <span className="muted">участников: {month?.participants ?? 0}</span>
         </div>
       </section>
 

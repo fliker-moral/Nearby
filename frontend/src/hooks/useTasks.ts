@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MapEvent, Task, TaskStatus } from '../types';
-import { assignTask, fetchTasksInBbox, TaskConflictError } from '../api/client';
+import { assignTask, fetchTasksInBbox, listAssignedTasks, TaskConflictError } from '../api/client';
 import { WS_BASE } from '../config';
 import { getInitData } from '../lib/maxBridge';
 
 interface UseTasksResult {
   tasks: Task[];
-  source: 'api' | 'mock' | 'loading';
+  source: 'api' | 'loading' | 'error';
   assign: (task: Task) => Promise<'ok' | 'conflict' | 'error'>;
   patchStatus: (id: string, status: TaskStatus) => void;
 }
 
-export function useTasks(): UseTasksResult {
+export function useTasks(district = ''): UseTasksResult {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [source, setSource] = useState<'api' | 'mock' | 'loading'>('loading');
+  const [source, setSource] = useState<'api' | 'loading' | 'error'>('loading');
   const wsRef = useRef<WebSocket | null>(null);
 
   const patchStatus = useCallback((id: string, status: TaskStatus) => {
@@ -23,15 +23,25 @@ export function useTasks(): UseTasksResult {
   // Первичная загрузка задач.
   useEffect(() => {
     let alive = true;
-    fetchTasksInBbox().then(({ items, source }) => {
-      if (!alive) return;
-      setTasks(items);
-      setSource(source);
-    });
+    Promise.all([
+      fetchTasksInBbox(undefined, district),
+      listAssignedTasks().catch(() => []),
+    ])
+      .then(([{ items, source }, assigned]) => {
+        if (!alive) return;
+        const byId = new Map([...items, ...assigned].map((task) => [task.id, task]));
+        setTasks([...byId.values()]);
+        setSource(source);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setTasks([]);
+        setSource('error');
+      });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [district]);
 
   // Real-time обновления через WebSocket (только если реально подключились).
   useEffect(() => {
@@ -64,11 +74,7 @@ export function useTasks(): UseTasksResult {
 
   const assign = useCallback<UseTasksResult['assign']>(
     async (task) => {
-      if (source === 'mock') {
-        // Demo-режим: имитируем успешный атомарный захват.
-        patchStatus(task.id, 'IN_PROGRESS');
-        return 'ok';
-      }
+      if (source !== 'api') return 'error';
       // Оптимистично помечаем «в работе», при ошибке откатываем.
       patchStatus(task.id, 'IN_PROGRESS');
       try {

@@ -1,14 +1,14 @@
 :root {
-  --bg: #eef1f6;
+  --bg: #e7ebf2;
   --surface: #ffffff;
   --surface-2: #f2f4f8;
-  --ink: #1b2130;
-  --ink-2: #5b6478;
-  --muted: #8b95a5;
+  --ink: #101828;
+  --ink-2: #475467;
+  --muted: #667085;
   --line: #e7ebf2;
-  --coral: #f0522e;
-  --blue: #2e6bf6;
-  --purple: #7a5af8;
+  --coral: #d83b1f;
+  --blue: #1d4ed8;
+  --purple: #5b3fd6;
   --green: #12b76a;
   --gold: #f5a623;
   --shadow-sm: 0 2px 8px rgba(18, 23, 42, 0.08);
@@ -247,6 +247,12 @@ h2 {
   display: grid;
   place-items: center;
   color: var(--ink-2);
+}
+.filter-notify {
+  align-self: flex-start;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
 }
 .icon-round--filter {
   width: 48px;
@@ -1092,6 +1098,42 @@ h2 {
 }
 .profile-section {
   margin-bottom: 22px;
+}
+.quality-section {
+  margin-top: 20px;
+  margin-bottom: 22px;
+}
+.quality-section .section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.quality-section h2 {
+  font-size: 18px;
+}
+.quality-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.quality-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.quality-item b {
+  color: var(--blue);
+  font-size: 15px;
 }
 .section-head {
   display: flex;

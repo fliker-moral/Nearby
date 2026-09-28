@@ -37,7 +37,8 @@ export interface TaskAuthor {
 /** Полная карточка — schemas.TaskRead + UI-поля. */
 export interface Task extends TaskMapItem {
   description: string;
-  address_text: string;
+  address_text: string | null;
+  address_hint: string;
   photos: string[];
   author: TaskAuthor;
   created_at: string;

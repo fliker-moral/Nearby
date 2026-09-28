@@ -10,6 +10,7 @@ from app.models.base import Base, CreatedAtMixin, UUIDPrimaryKeyMixin
 from app.models.enums import UserRole
 
 if TYPE_CHECKING:
+    from app.models.notification import NotificationSubscription
     from app.models.review import Review
     from app.models.task import Task
 
@@ -62,4 +63,8 @@ class User(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
     received_reviews: Mapped[list[Review]] = relationship(
         back_populates="target_user",
         foreign_keys="Review.target_user_id",
+    )
+    notification_subscriptions: Mapped[list[NotificationSubscription]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )

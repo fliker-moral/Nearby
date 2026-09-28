@@ -2,17 +2,16 @@ import { forwardRef } from 'react';
 import MapView, { type MapViewHandle } from '../map/MapView';
 import Header from '../components/Header';
 import SearchBar from '../components/SearchBar';
-import ModeToggle from '../components/ModeToggle';
 import KindChips from '../components/KindChips';
 import MapControls from '../components/MapControls';
 import RequestSheet from '../components/RequestSheet';
-import EventCard from '../components/EventCard';
 import { BRAND, type Mode } from '../config';
 import type { LngLat, Task } from '../types';
 import type { RouteResult } from '../lib/routing';
 import { formatDuration } from '../lib/routing';
 import { formatDistance } from '../lib/geo';
 import { RouteIcon, CloseIcon } from '../components/icons';
+import { saveNotificationFilter } from '../api/client';
 
 interface MapScreenProps {
   mode: Mode;
@@ -22,7 +21,7 @@ interface MapScreenProps {
   userLocation: LngLat | null;
   search: string;
   kind: string | 'ALL';
-  source: 'api' | 'mock' | 'loading';
+  source: 'api' | 'loading' | 'error';
   assigning: boolean;
   routing: boolean;
   routeInfo: RouteResult | null;
@@ -58,10 +57,15 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
         <Header title={BRAND.name} subtitle={BRAND.tagline} />
         <SearchBar
           value={props.search}
-          placeholder={props.mode === 'help' ? 'Поиск по адресам и просьбам' : 'Поиск событий'}
+          placeholder="Фильтр: город или район"
           onChange={props.onSearch}
         />
-        <ModeToggle mode={props.mode} onChange={props.onMode} />
+        <button
+          className="filter-notify"
+          onClick={() => saveNotificationFilter('Москва', props.search).catch(() => undefined)}
+        >
+          🔔 Уведомлять о новых просьбах в этом фильтре
+        </button>
         <KindChips mode={props.mode} value={props.kind} onChange={props.onKind} />
       </div>
 
@@ -106,19 +110,6 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
         />
       )}
 
-      {props.mode === 'events' && (
-        <div className="events-panel">
-          <div className="events-panel__head">
-            <b>Ближайшие события</b>
-            <span className="muted">{props.visibleTasks.length}</span>
-          </div>
-          <div className="events-list">
-            {props.visibleTasks.map((e) => (
-              <EventCard key={e.id} event={e} onOpen={props.onSelectTask} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 });

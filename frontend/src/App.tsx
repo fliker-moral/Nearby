@@ -37,11 +37,12 @@ export default function App() {
     setRole(r);
   };
 
-  const { tasks, source, assign } = useTasks();
+  const [district, setDistrict] = useState('');
+  const { tasks, source, assign } = useTasks(district);
   const mapRef = useRef<MapViewHandle>(null);
 
   const [tab, setTab] = useState<Tab>('map');
-  const [mode, setMode] = useState<Mode>('help');
+  const mode: Mode = 'help';
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<string | 'ALL'>('ALL');
   const [userLocation, setUserLocation] = useState<LngLat | null>(null);
@@ -73,7 +74,7 @@ export default function App() {
     const q = search.trim().toLowerCase();
     return modeTasks.filter((t) => {
       if (kind !== 'ALL' && t.kind !== kind) return false;
-      if (q && !`${t.title} ${t.address_text}`.toLowerCase().includes(q)) return false;
+      if (q && !`${t.title} ${t.address_text ?? ''} ${t.address_hint}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [modeTasks, kind, search]);
@@ -92,14 +93,7 @@ export default function App() {
     [selectedId, tasks],
   );
 
-  const changeMode = (m: Mode) => {
-    setMode(m);
-    setKind('ALL');
-    setSheetExpanded(false);
-    setPeekDismissed(false);
-    clearRoute();
-    if (m === 'events') setSelectedId(null);
-  };
+  const changeMode = (_m: Mode) => undefined;
 
   const clearRoute = () => {
     mapRef.current?.clearRoute();
@@ -196,7 +190,10 @@ export default function App() {
           routing={routing}
           routeInfo={routeInfo}
           onMode={changeMode}
-          onSearch={setSearch}
+          onSearch={(value) => {
+            setSearch(value);
+            setDistrict(value);
+          }}
           onKind={setKind}
           onSelectTask={openTask}
           onUserLocation={setUserLocation}

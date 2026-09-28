@@ -13,6 +13,7 @@ from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewRead
 
 ALLOWED_QUALITY_TAGS = {
+    "fast",
     "kindness",
     "punctuality",
     "carefulness",
