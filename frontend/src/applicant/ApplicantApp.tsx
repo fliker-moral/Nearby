@@ -38,6 +38,31 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
   const open = openId ? app.requests.find((r) => r.id === openId) ?? null : null;
   const offers = app.requests.filter((r) => r.status === 'offer').length;
 
+  // Актуальные просьбы вверху (отклики — первыми), выполненные — в архиве.
+  const priority: Record<string, number> = { offer: 0, in_progress: 1, searching: 2 };
+  const active = app.requests
+    .filter((r) => r.status !== 'done')
+    .sort((a, b) => (priority[a.status] ?? 3) - (priority[b.status] ?? 3));
+  const archived = app.requests.filter((r) => r.status === 'done');
+
+  const renderCard = (r: MyRequest) => {
+    const st = statusText(r);
+    return (
+      <button key={r.id} className="a-card" onClick={() => setOpenId(r.id)}>
+        <span className="a-card__emoji">{KIND_META[r.kind]?.emoji}</span>
+        <span className="a-card__body">
+          <span className="a-card__title">{r.title}</span>
+          <span className="a-card__when">🕐 {r.when}</span>
+          <span className={`a-status a-status--${st.cls}`}>
+            {r.status === 'searching' && <span className="a-dot-spin" />}
+            {st.label}
+          </span>
+        </span>
+        <ChevronRightIcon width={22} height={22} className="a-card__chev" />
+      </button>
+    );
+  };
+
   return (
     <div className="app app--applicant">
       {tab === 'home' && (
@@ -65,25 +90,22 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
               <span>Нажмите «Создать просьбу», чтобы позвать на помощь</span>
             </div>
           ) : (
-            <div className="a-list">
-              {app.requests.map((r) => {
-                const st = statusText(r);
-                return (
-                  <button key={r.id} className="a-card" onClick={() => setOpenId(r.id)}>
-                    <span className="a-card__emoji">{KIND_META[r.kind]?.emoji}</span>
-                    <span className="a-card__body">
-                      <span className="a-card__title">{r.title}</span>
-                      <span className="a-card__when">🕐 {r.when}</span>
-                      <span className={`a-status a-status--${st.cls}`}>
-                        {r.status === 'searching' && <span className="a-dot-spin" />}
-                        {st.label}
-                      </span>
-                    </span>
-                    <ChevronRightIcon width={22} height={22} className="a-card__chev" />
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              {active.length > 0 ? (
+                <div className="a-list">{active.map(renderCard)}</div>
+              ) : (
+                <div className="a-empty a-empty--small">
+                  <span>Активных просьб нет</span>
+                </div>
+              )}
+
+              {archived.length > 0 && (
+                <>
+                  <h2 className="a-section-title a-section-title--archive">Архив</h2>
+                  <div className="a-list a-list--archive">{archived.map(renderCard)}</div>
+                </>
+              )}
+            </>
           )}
         </div>
       )}
@@ -162,6 +184,9 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
             app.cancelRequest(id);
             setOpenId(null);
             setToast({ id: Date.now(), message: 'Просьба отменена', kind: 'info' });
+          }}
+          onContact={() => {
+            setToast({ id: Date.now(), message: 'Открываем чат с волонтёром в MAX…', kind: 'info' });
           }}
         />
       )}

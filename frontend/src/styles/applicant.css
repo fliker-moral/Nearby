@@ -602,21 +602,51 @@
   align-self: flex-start;
 }
 
-/* Вторичные действия (жалоба / отмена) */
+/* Вторичные действия (жалоба / отмена) — ровная сетка */
 .a-secondary {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
 }
 .a-secondary button {
+  padding: 16px 8px;
   font-size: 15px;
   font-weight: 600;
   color: var(--ink-2);
-  padding: 8px;
+  text-align: center;
+}
+.a-secondary button:first-child {
+  border-right: 1px solid var(--line);
 }
 .a-secondary button:active {
   opacity: 0.6;
+}
+
+/* Кнопка «Написать волонтёру» */
+.a-btn--contact {
+  background: rgba(46, 107, 246, 0.1);
+  color: var(--blue);
+  margin-top: 4px;
+}
+.a-btn--primary:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* Архив выполненных */
+.a-section-title--archive {
+  color: var(--muted);
+  margin-top: 26px;
+}
+.a-list--archive .a-card {
+  opacity: 0.72;
+}
+.a-empty--small {
+  padding: 18px 12px;
+  font-size: 15px;
 }
 
 /* Опасные кнопки */

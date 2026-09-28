@@ -20,6 +20,7 @@ interface RequestDetailProps {
   onReview: (id: string) => void;
   onReport: (id: string, reason: string) => void;
   onCancel: (id: string) => void;
+  onContact: (id: string) => void;
 }
 
 const REVIEW_TAGS = [
@@ -57,11 +58,12 @@ export default function RequestDetail({
   onReview,
   onReport,
   onCancel,
+  onContact,
 }: RequestDetailProps) {
   const [view, setView] = useState<'main' | 'report' | 'cancel'>('main');
   const [reviewing, setReviewing] = useState(false);
   const [thanked, setThanked] = useState(false);
-  const [score, setScore] = useState(5);
+  const [score, setScore] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [reason, setReason] = useState('');
   const v = r.volunteer;
@@ -232,14 +234,17 @@ export default function RequestDetail({
                   </div>
                 </div>
                 <div className="a-note a-note--ok">
-                  <NavArrowIcon width={18} height={18} /> Свяжитесь с волонтёром в MAX, чтобы уточнить
+                  <NavArrowIcon width={18} height={18} /> Свяжитесь с волонтёром, чтобы уточнить
                   детали. Когда всё будет готово — отметьте, что просьба выполнена.
                 </div>
+                <button className="a-btn a-btn--contact" onClick={() => onContact(r.id)}>
+                  💬 Написать волонтёру в MAX
+                </button>
                 <button className="a-btn a-btn--primary" onClick={() => onComplete(r.id)}>
                   <CheckCircleIcon width={22} height={22} /> Просьба выполнена
                 </button>
                 <div className="a-secondary">
-                  <button onClick={() => setView('report')}>Пожаловаться на волонтёра</button>
+                  <button onClick={() => setView('report')}>Пожаловаться</button>
                   <button onClick={() => setView('cancel')}>Отменить просьбу</button>
                 </div>
               </>
@@ -257,7 +262,7 @@ export default function RequestDetail({
                   Оценить помощь
                 </button>
                 <button className="a-btn a-btn--text" onClick={onClose}>
-                  Позже
+                  Пропустить
                 </button>
               </div>
             )}
@@ -290,14 +295,19 @@ export default function RequestDetail({
                     </button>
                   ))}
                 </div>
-                <button className="a-btn a-btn--primary" onClick={sendReview}>
-                  Отправить отзыв
+                <button
+                  className="a-btn a-btn--primary"
+                  disabled={score === 0}
+                  onClick={sendReview}
+                >
+                  {score === 0 ? 'Поставьте оценку' : 'Отправить отзыв'}
                 </button>
-                {score <= 2 && (
-                  <button className="a-btn a-btn--text a-btn--danger-text" onClick={() => setView('report')}>
-                    Пожаловаться на волонтёра
-                  </button>
-                )}
+                <button
+                  className="a-btn a-btn--text a-btn--danger-text"
+                  onClick={() => setView('report')}
+                >
+                  Пожаловаться на волонтёра
+                </button>
               </div>
             )}
 
