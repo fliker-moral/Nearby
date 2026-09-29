@@ -2,21 +2,12 @@ import { getCurrentUser } from '../lib/maxBridge';
 import { fetchMonthlyStats, fetchProfile, type ProfileData } from '../api/client';
 import { useEffect, useState } from 'react';
 import type { Task } from '../types';
-import { FlameIcon, StarIcon } from '../components/icons';
+import { CloseIcon, FlameIcon, StarIcon } from '../components/icons';
 
 interface ProfileScreenProps {
   tasks: Task[];
   onSwitchRole: () => void;
 }
-
-const ACHIEVEMENTS = [
-  { emoji: '💊', title: 'Аптечный помощник', progress: '10/10', done: true },
-  { emoji: '❤️', title: 'Всегда рядом', progress: '5/5', done: true },
-  { emoji: '📅', title: 'Волонтёр событий', progress: '3/5', done: false },
-  { emoji: '🐾', title: 'Друг животных', progress: '2/5', done: false },
-  { emoji: '🏠', title: 'Добрые руки', progress: '3/10', done: false },
-  { emoji: '🌿', title: 'Экоактивист', progress: '1/5', done: false },
-];
 
 const QUALITY_TAGS = [
   ['fast', 'Быстро приехал'],
@@ -27,15 +18,32 @@ const QUALITY_TAGS = [
   ['reliability', 'Надёжность'],
 ] as const;
 
+const achievementInfo = [
+  ['🤝', 'Первый шаг', 'Откликнитесь и завершите первую просьбу.', 'Начните с одной небольшой помощи.'],
+  ['❤️', 'Всегда рядом', 'Завершите 5 просьб.', 'Пять завершённых дел — уже заметная поддержка для города.'],
+  ['💊', 'Аптечный помощник', 'Получите 10 отметок за быстрый отклик.', 'Выбирайте просьбы рядом и заранее оценивайте время в пути.'],
+  ['⏰', 'Пунктуальный помощник', 'Получите 5 отметок «Пунктуальность».', 'Подтверждайте время заранее и предупреждайте о задержках.'],
+  ['✨', 'Добрые руки', 'Получите 10 отметок «Надёжность».', 'Берите задачи, которые точно сможете выполнить.'],
+  ['💬', 'Хорошее общение', 'Получите 5 отметок за общение.', 'Пишите заявителю и держите его в курсе выполнения.'],
+] as const;
+
 export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProps) {
   const user = getCurrentUser();
   const done = tasks.filter((t) => t.status === 'COMPLETED' || t.status === 'CLOSED').length;
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [month, setMonth] = useState<{ month: string; participants: number; completed_tasks: number } | null>(null);
+  const [selectedAchievement, setSelectedAchievement] = useState<number | null>(null);
   useEffect(() => {
     fetchProfile().then(setProfile).catch(() => undefined);
     fetchMonthlyStats().then((items) => setMonth(items[0] ?? null)).catch(() => undefined);
   }, []);
+
+  const tags = profile?.quality_tags ?? {};
+  const achievements = achievementInfo.map(([emoji, title, how, motivation], index) => {
+    const current = index === 0 ? done : index === 1 ? done : index === 2 ? tags.fast ?? 0 : index === 3 ? tags.punctuality ?? 0 : index === 4 ? tags.reliability ?? 0 : tags.communication ?? 0;
+    const target = index === 0 ? 1 : index === 1 ? 5 : index === 2 ? 10 : index === 3 ? 5 : index === 4 ? 10 : 5;
+    return { emoji, title, how, motivation, current: Math.min(current, target), target, done: current >= target };
+  });
 
   return (
     <div className="screen screen--list screen--profile">
@@ -65,11 +73,11 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
           <span>добрых дел</span>
         </div>
         <div className="summary-tile">
-          <b>—</b>
+          <b>0</b>
           <span>часов волонтёрства</span>
         </div>
         <div className="summary-tile">
-          <b>{profile?.rating_count ? profile.rating_score.toFixed(1) : '—'}</b>
+          <b>{profile?.rating_count ? profile.rating_score.toFixed(1) : '0.0'}</b>
           <span>рейтинг</span>
         </div>
       </div>
@@ -102,12 +110,12 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
           <h2>Достижения</h2>
         </div>
         <div className="ach-grid">
-          {ACHIEVEMENTS.map((a) => (
-            <div key={a.title} className={`ach${a.done ? ' ach--done' : ''}`}>
+          {achievements.map((a, index) => (
+            <button type="button" key={a.title} className={`ach${a.done ? ' ach--done' : ''}`} onClick={() => setSelectedAchievement(index)}>
               <span className="ach__emoji">{a.emoji}</span>
               <span className="ach__title">{a.title}</span>
-              <span className="ach__progress">{a.progress}</span>
-            </div>
+              <span className="ach__progress">{a.current}/{a.target}</span>
+            </button>
           ))}
         </div>
       </section>
@@ -134,6 +142,24 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
       <p className="profile-foot">
         «Помощь рядом» — забота о пожилых людях силами волонтёров.
       </p>
+
+      {selectedAchievement !== null && (
+        <div className="achievement-modal" role="dialog" aria-modal="true">
+          <div className="achievement-modal__card">
+            <button type="button" className="achievement-modal__close" onClick={() => setSelectedAchievement(null)} aria-label="Закрыть">
+              <CloseIcon width={20} height={20} />
+            </button>
+            <span className="achievement-modal__emoji">{achievements[selectedAchievement].emoji}</span>
+            <h2>{achievements[selectedAchievement].title}</h2>
+            <p>{achievements[selectedAchievement].how}</p>
+            <div className="achievement-modal__progress">
+              <span style={{ width: `${(achievements[selectedAchievement].current / achievements[selectedAchievement].target) * 100}%` }} />
+            </div>
+            <b>{achievements[selectedAchievement].current}/{achievements[selectedAchievement].target}</b>
+            <p className="muted">{achievements[selectedAchievement].motivation}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

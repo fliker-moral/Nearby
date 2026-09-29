@@ -1168,9 +1168,71 @@ h2 {
   align-items: center;
   gap: 4px;
   opacity: 0.65;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 .ach--done {
   opacity: 1;
+}
+.ach:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+.achievement-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 24, 40, 0.5);
+}
+.achievement-modal__card {
+  position: relative;
+  width: 100%;
+  padding: 28px 22px 22px;
+  border-radius: 22px;
+  background: var(--surface);
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+.achievement-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.achievement-modal__emoji {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 44px;
+}
+.achievement-modal__card h2 {
+  font-size: 22px;
+}
+.achievement-modal__card p {
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.achievement-modal__progress {
+  height: 10px;
+  margin: 18px 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.achievement-modal__progress span {
+  display: block;
+  height: 100%;
+  background: var(--blue);
 }
 .ach__emoji {
   font-size: 26px;

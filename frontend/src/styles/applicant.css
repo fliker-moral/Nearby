@@ -336,6 +336,43 @@
 }
 .a-input:focus {
   border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.16);
+}
+.a-address-suggestions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+.a-address-suggestions button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.a-address-suggestions button:last-child {
+  border-bottom: 0;
+}
+.a-address-suggestions button:active,
+.a-address-suggestions button:hover {
+  background: #eef4ff;
+}
+.a-address-suggestions b {
+  font-size: 15px;
+}
+.a-address-suggestions span {
+  color: var(--ink-2);
+  font-size: 12px;
 }
 .a-textarea {
   resize: none;
@@ -346,6 +383,39 @@
   flex-wrap: wrap;
   gap: 10px;
 }
+.a-date-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.a-date-card {
+  min-height: 70px;
+  padding: 8px 4px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.a-date-card b,
+.a-date-card span {
+  display: block;
+}
+.a-date-card b {
+  font-size: 13px;
+}
+.a-date-card span {
+  margin-top: 5px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.a-date-card--on {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+.a-date-card--on span {
+  color: #dbeafe;
+}
 .a-when {
   background: var(--surface);
   border: 2px solid var(--line);
@@ -354,6 +424,7 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.04);
 }
 .a-when--on {
   background: var(--blue);

@@ -40,6 +40,10 @@ X-Dev-Role: APPLICANT
 
 Полный список переменных находится в `.env.example`.
 
+Для подсказок адресов задайте `DADATA_API_KEY` и `DADATA_SECRET_KEY` в `.env`.
+Фронтенд обращается к backend endpoint `/api/v1/addresses/suggest`; секретный ключ
+не передаётся в браузер.
+
 ## Миграции
 
 ```bash

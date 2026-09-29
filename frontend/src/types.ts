@@ -44,7 +44,7 @@ export interface Task extends TaskMapItem {
   created_at: string;
   /** Подкатегория для иконки: meds/groceries/home/animals/escort или concert/... */
   kind: string;
-  /** Предвычисленное расстояние (для demo), метры. */
+  /** Расстояние до задачи, если его рассчитала backend-служба маршрутизации. */
   distance_m?: number;
   eta_minutes?: number;
   /** Опыт/баллы волонтёра за выполнение. */

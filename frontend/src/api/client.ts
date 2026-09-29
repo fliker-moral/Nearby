@@ -39,8 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /**
- * Задачи в видимой области карты (bbox). Пытается сходить на бэкенд;
- * если бэкенд недоступен — отдаёт демо-данные, чтобы фронт работал автономно.
+ * Задачи в видимой области карты (bbox). Данные всегда приходят с backend.
  */
 export async function fetchTasksInBbox(
   bbox?: [number, number, number, number],
@@ -109,4 +108,19 @@ export async function fetchProfile(): Promise<ProfileData> {
 
 export async function fetchMonthlyStats(): Promise<Array<{ month: string; participants: number; completed_tasks: number }>> {
   return request('/tasks/stats/monthly');
+}
+
+export interface AddressSuggestion {
+  value: string;
+  city: string | null;
+  region: string | null;
+  street: string | null;
+  house: string | null;
+  lat: number | null;
+  lon: number | null;
+}
+
+export async function suggestAddresses(query: string, city = 'Москва'): Promise<AddressSuggestion[]> {
+  const params = new URLSearchParams({ query, city });
+  return request<AddressSuggestion[]>(`/addresses/suggest?${params.toString()}`);
 }

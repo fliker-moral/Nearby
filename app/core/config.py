@@ -26,6 +26,8 @@ class Settings(BaseSettings):
         alias="MAX_AUTH_FUTURE_SKEW_SECONDS",
     )
     admin_max_ids: str = Field(default="", alias="ADMIN_MAX_IDS")
+    dadata_api_key: str = Field(default="", alias="DADATA_API_KEY")
+    dadata_secret_key: str = Field(default="", alias="DADATA_SECRET_KEY")
 
     postgres_host: str = Field(default="db", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")

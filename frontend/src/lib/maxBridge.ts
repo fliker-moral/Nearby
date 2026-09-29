@@ -1,5 +1,5 @@
 // Тонкая обёртка над MAX Bridge SDK. Вне мессенджера MAX всё деградирует
-// в demo-режим, чтобы приложение открывалось в обычном браузере.
+// Вне MAX приложение может открыться только в локальном dev-режиме.
 
 interface MaxUser {
   id: number;
@@ -38,11 +38,11 @@ export function getInitData(): string | null {
   return getWebApp()?.initData ?? null;
 }
 
-/** Демо-пользователь, если открыто вне MAX. */
+/** Локальный dev-профиль, если приложение открыто вне MAX. */
 export function getCurrentUser(): MaxUser {
   const u = getWebApp()?.initDataUnsafe?.user;
   if (u) return u;
-  return { id: 0, name: 'Демо-волонтёр', avatar_url: null };
+  return { id: 0, name: 'Локальный пользователь', avatar_url: null };
 }
 
 /** Сообщить клиенту MAX, что мини-апп готов, и развернуть на весь экран. */
