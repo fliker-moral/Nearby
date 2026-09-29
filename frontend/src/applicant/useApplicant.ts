@@ -25,8 +25,8 @@ export function useApplicant() {
   }, []);
 
   const createRequest = useCallback(
-    (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when'>) => {
-      const promise = createAuthoredTask({ title: data.title, description: data.description, category: 'PERSONAL_HELP', address_hint: data.address, address_text: data.address, lat: 55.7512, lon: 37.6183 });
+    (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when' | 'lat' | 'lon'>) => {
+      const promise = createAuthoredTask({ title: data.title, description: data.description, category: 'PERSONAL_HELP', address_hint: data.address, address_text: data.address, lat: data.lat ?? 55.7512, lon: data.lon ?? 37.6183 });
       promise.then((task) => { setRequests((prev) => [fromTask(task), ...prev]); });
       return `pending-${Date.now()}`;
     },

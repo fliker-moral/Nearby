@@ -8,7 +8,7 @@ import RequestDetail from './RequestDetail';
 import Toast, { type ToastData } from '../components/Toast';
 import { PlusIcon, ChevronRightIcon, ListIcon, ProfileIcon } from '../components/icons';
 
-const DEFAULT_ADDRESS = 'ул. Ленина, 15, кв. 12';
+const DEFAULT_ADDRESS = 'Москва, ул. Ленина, 15';
 
 function statusText(r: MyRequest): { label: string; cls: string } {
   switch (r.status) {

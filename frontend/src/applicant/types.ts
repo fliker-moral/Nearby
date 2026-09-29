@@ -22,6 +22,8 @@ export interface MyRequest {
   description: string;
   address: string;
   when: string; // «Сегодня, до 18:00»
+  lat?: number;
+  lon?: number;
   createdAt: string;
   status: ReqStatus;
   volunteer?: Volunteer;

@@ -2,22 +2,38 @@ import { useState } from 'react';
 import { HELP_CHIPS, KIND_META } from '../config';
 import type { MyRequest } from './types';
 import { CloseIcon, CheckIcon } from '../components/icons';
+import { suggestAddresses, type AddressSuggestion } from '../api/client';
 
 interface CreateRequestProps {
   defaultAddress: string;
   onClose: () => void;
-  onCreate: (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when'>) => void;
+  onCreate: (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when' | 'lat' | 'lon'>) => void;
 }
 
-const WHEN_OPTIONS = ['Сегодня, до 18:00', 'Сегодня, вечером', 'Завтра, утром', 'В ближайшие дни'];
+function shortDate(offset: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(date);
+}
+
+const DATE_OPTIONS = [
+  { key: 'today', label: 'Сегодня', date: shortDate(0) },
+  { key: 'tomorrow', label: 'Завтра', date: shortDate(1) },
+  { key: 'day2', label: 'Через 2 дня', date: shortDate(2) },
+  { key: 'day3', label: 'Через 3 дня', date: shortDate(3) },
+] as const;
+const TIME_OPTIONS = ['До 18:00', '18:00–21:00', 'В любое время'];
 
 export default function CreateRequest({ defaultAddress, onClose, onCreate }: CreateRequestProps) {
   const [step, setStep] = useState(0);
   const [kind, setKind] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [when, setWhen] = useState(WHEN_OPTIONS[0]);
+  const [dateKey, setDateKey] = useState<(typeof DATE_OPTIONS)[number]['key']>('today');
+  const [time, setTime] = useState(TIME_OPTIONS[0]);
   const [address, setAddress] = useState(defaultAddress);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<AddressSuggestion | null>(null);
 
   const pickKind = (k: string) => {
     setKind(k);
@@ -27,7 +43,25 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
 
   const submit = () => {
     if (!kind) return;
-    onCreate({ kind, title: title.trim() || KIND_META[kind].label, description, address, when });
+    onCreate({
+      kind,
+      title: title.trim() || KIND_META[kind].label,
+      description,
+      address,
+      when: `${DATE_OPTIONS.find((option) => option.key === dateKey)?.label} · ${time}`,
+      lat: selectedAddress?.lat ?? 55.7512,
+      lon: selectedAddress?.lon ?? 37.6183,
+    });
+  };
+
+  const onAddressChange = (value: string) => {
+    setAddress(value);
+    setSelectedAddress(null);
+    if (value.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    suggestAddresses(value).then(setSuggestions).catch(() => setSuggestions([]));
   };
 
   return (
@@ -74,12 +108,27 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
               rows={4}
             />
             <label className="a-label">Когда нужно?</label>
+            <div className="a-date-grid">
+              {DATE_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={`a-date-card${dateKey === option.key ? ' a-date-card--on' : ''}`}
+                  onClick={() => setDateKey(option.key)}
+                >
+                  <b>{option.label}</b>
+                  <span>{option.date}</span>
+                </button>
+              ))}
+            </div>
+            <label className="a-label">Выберите время</label>
             <div className="a-chips">
-              {WHEN_OPTIONS.map((w) => (
+              {TIME_OPTIONS.map((w) => (
                 <button
                   key={w}
-                  className={`a-when${when === w ? ' a-when--on' : ''}`}
-                  onClick={() => setWhen(w)}
+                  type="button"
+                  className={`a-when${time === w ? ' a-when--on' : ''}`}
+                  onClick={() => setTime(w)}
                 >
                   {w}
                 </button>
@@ -98,9 +147,27 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
             <input
               className="a-input"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Улица, дом, квартира"
+              onChange={(e) => onAddressChange(e.target.value)}
+              placeholder="Москва, улица, дом"
             />
+            {suggestions.length > 0 && (
+              <div className="a-address-suggestions">
+                {suggestions.map((suggestion) => (
+                  <button
+                    type="button"
+                    key={`${suggestion.value}-${suggestion.lat}-${suggestion.lon}`}
+                    onClick={() => {
+                      setAddress(suggestion.value);
+                      setSelectedAddress(suggestion);
+                      setSuggestions([]);
+                    }}
+                  >
+                    <b>{suggestion.value}</b>
+                    <span>{[suggestion.city, suggestion.region].filter(Boolean).join(', ')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="a-note">
               🔒 Точный адрес и телефон увидит только волонтёр, которого вы выберете.
             </div>
@@ -112,7 +179,7 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
               </div>
               <div className="a-summary__row">
                 <span className="a-summary__k">🕐 Когда</span>
-                <b>{when}</b>
+                <b>{DATE_OPTIONS.find((option) => option.key === dateKey)?.label} · {time}</b>
               </div>
             </div>
 
