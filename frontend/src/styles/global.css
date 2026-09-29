@@ -910,6 +910,14 @@ h2 {
   background: var(--bg);
   overflow-y: auto;
   padding: calc(18px + var(--safe-top)) 16px calc(var(--nav-h) + var(--safe-bottom) + 20px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.screen--scroll-locked {
+  overflow: hidden;
+}
+.screen--list::-webkit-scrollbar {
+  display: none;
 }
 .list-header h1 {
   font-size: 26px;
@@ -1073,28 +1081,37 @@ h2 {
   gap: 12px;
   width: 100%;
   text-align: left;
-  background: linear-gradient(120deg, #eef2ff, #f5f0ff);
+  background: linear-gradient(135deg, #ffffff, #eef3ff);
+  border: 1px solid rgba(91, 63, 214, 0.16);
   border-radius: var(--radius);
   padding: 14px;
   margin-bottom: 20px;
+  box-shadow: 0 10px 24px rgba(18, 23, 42, 0.08);
 }
-.promo-banner__flame {
-  color: var(--coral);
+.promo-banner__icon {
+  color: #d83b6a;
   flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(216, 59, 106, 0.12);
 }
 .promo-banner b {
   display: block;
   font-size: 14px;
+  color: var(--ink);
 }
 .promo-banner span {
   font-size: 12px;
-  color: var(--ink-2);
+  color: #344054;
+  font-weight: 500;
 }
 .promo-banner > div {
   flex: 1;
 }
 .promo-banner > svg {
-  color: var(--muted);
+  color: #475467;
 }
 .profile-section {
   margin-bottom: 22px;
@@ -1188,15 +1205,18 @@ h2 {
   place-items: center;
   padding: 24px;
   background: rgba(16, 24, 40, 0.5);
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 .achievement-modal__card {
   position: relative;
   width: 100%;
+  max-width: 420px;
   padding: 28px 22px 22px;
   border-radius: 22px;
   background: var(--surface);
   text-align: center;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 18px 48px rgba(18, 23, 42, 0.18);
 }
 .achievement-modal__close {
   position: absolute;
@@ -1274,6 +1294,12 @@ h2 {
 .challenge h2 {
   font-size: 16px;
   margin-bottom: 12px;
+}
+.challenge__goal {
+  margin: -4px 0 12px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
 }
 .challenge__bar {
   height: 10px;

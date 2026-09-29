@@ -46,7 +46,7 @@ export const KIND_META: Record<string, KindMeta> = {
   groceries: { label: 'Продукты', emoji: '🛒', mode: 'help', category: 'PERSONAL_HELP' },
   home: { label: 'Помощь дома', emoji: '🏠', mode: 'help', category: 'PERSONAL_HELP' },
   animals: { label: 'Питомцы', emoji: '🐾', mode: 'help', category: 'PERSONAL_HELP' },
-  escort: { label: 'Сопровождение', emoji: '🚶', mode: 'help', category: 'PERSONAL_HELP' },
+  escort: { label: 'Сопровождение', emoji: '❤️', mode: 'help', category: 'PERSONAL_HELP' },
   concert: { label: 'Концерты', emoji: '🎵', mode: 'events', category: 'EVENT_ORGANIZATION' },
   festival: { label: 'Фестивали', emoji: '🎭', mode: 'events', category: 'EVENT_ORGANIZATION' },
   sport: { label: 'Спорт', emoji: '🏆', mode: 'events', category: 'EVENT_ORGANIZATION' },

@@ -1,8 +1,9 @@
 import { getCurrentUser } from '../lib/maxBridge';
 import { fetchMonthlyStats, fetchProfile, type ProfileData } from '../api/client';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Task } from '../types';
-import { CloseIcon, FlameIcon, StarIcon } from '../components/icons';
+import { CloseIcon, HeartIcon, StarIcon } from '../components/icons';
 
 interface ProfileScreenProps {
   tasks: Task[];
@@ -33,6 +34,7 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [month, setMonth] = useState<{ month: string; participants: number; completed_tasks: number } | null>(null);
   const [selectedAchievement, setSelectedAchievement] = useState<number | null>(null);
+  const isAchievementOpen = selectedAchievement !== null;
   useEffect(() => {
     fetchProfile().then(setProfile).catch(() => undefined);
     fetchMonthlyStats().then((items) => setMonth(items[0] ?? null)).catch(() => undefined);
@@ -44,9 +46,30 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
     const target = index === 0 ? 1 : index === 1 ? 5 : index === 2 ? 10 : index === 3 ? 5 : index === 4 ? 10 : 5;
     return { emoji, title, how, motivation, current: Math.min(current, target), target, done: current >= target };
   });
+  const modalRoot = typeof document === 'undefined' ? null : document.querySelector('.app');
+  const achievementModal = selectedAchievement !== null && modalRoot
+    ? createPortal(
+        <div className="achievement-modal" role="dialog" aria-modal="true" onClick={() => setSelectedAchievement(null)}>
+          <div className="achievement-modal__card" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="achievement-modal__close" onClick={() => setSelectedAchievement(null)} aria-label="Закрыть">
+              <CloseIcon width={20} height={20} />
+            </button>
+            <span className="achievement-modal__emoji">{achievements[selectedAchievement].emoji}</span>
+            <h2>{achievements[selectedAchievement].title}</h2>
+            <p>{achievements[selectedAchievement].how}</p>
+            <div className="achievement-modal__progress">
+              <span style={{ width: `${(achievements[selectedAchievement].current / achievements[selectedAchievement].target) * 100}%` }} />
+            </div>
+            <b>{achievements[selectedAchievement].current}/{achievements[selectedAchievement].target}</b>
+            <p className="muted">{achievements[selectedAchievement].motivation}</p>
+          </div>
+        </div>,
+        modalRoot,
+      )
+    : null;
 
   return (
-    <div className="screen screen--list screen--profile">
+    <div className={`screen screen--list screen--profile${isAchievementOpen ? ' screen--scroll-locked' : ''}`}>
       <header className="profile-hero">
         <div className="avatar avatar--lg" aria-hidden>
           {user.name.charAt(0)}
@@ -98,7 +121,7 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
       </section>
 
       <div className="promo-banner">
-        <FlameIcon width={22} height={22} className="promo-banner__flame" />
+        <HeartIcon width={22} height={22} className="promo-banner__icon" />
         <div>
           <b>Вы помогаете людям</b>
           <span>И делаете город добрее</span>
@@ -122,10 +145,11 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
 
       <section className="challenge">
         <div className="challenge__top">
-          <span className="challenge__badge">Добрая Москва</span>
+          <span className="challenge__badge">Добрая Россия</span>
           <StarIcon width={16} height={16} className="challenge__star" />
         </div>
         <h2>{month ? `Статистика за ${month.month}` : 'Статистика появится после первых заявок'}</h2>
+        <p className="challenge__goal">Цель 50000</p>
         <div className="challenge__bar">
           <span style={{ width: month ? '100%' : '0%' }} />
         </div>
@@ -142,24 +166,7 @@ export default function ProfileScreen({ tasks, onSwitchRole }: ProfileScreenProp
       <p className="profile-foot">
         «Помощь рядом» — забота о пожилых людях силами волонтёров.
       </p>
-
-      {selectedAchievement !== null && (
-        <div className="achievement-modal" role="dialog" aria-modal="true">
-          <div className="achievement-modal__card">
-            <button type="button" className="achievement-modal__close" onClick={() => setSelectedAchievement(null)} aria-label="Закрыть">
-              <CloseIcon width={20} height={20} />
-            </button>
-            <span className="achievement-modal__emoji">{achievements[selectedAchievement].emoji}</span>
-            <h2>{achievements[selectedAchievement].title}</h2>
-            <p>{achievements[selectedAchievement].how}</p>
-            <div className="achievement-modal__progress">
-              <span style={{ width: `${(achievements[selectedAchievement].current / achievements[selectedAchievement].target) * 100}%` }} />
-            </div>
-            <b>{achievements[selectedAchievement].current}/{achievements[selectedAchievement].target}</b>
-            <p className="muted">{achievements[selectedAchievement].motivation}</p>
-          </div>
-        </div>
-      )}
+      {achievementModal}
     </div>
   );
 }

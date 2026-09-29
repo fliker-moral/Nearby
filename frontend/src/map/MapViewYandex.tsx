@@ -41,8 +41,9 @@ function createPinEl(task: Task): HTMLElement {
   el.type = 'button';
   el.className = `ya-pin${muted ? ' ya-pin--muted' : ''}`;
   el.setAttribute('aria-label', task.title);
+  const ext = task.kind === 'escort' ? 'svg' : 'png';
   el.innerHTML =
-    `<img class="ya-pin__img" src="pins/${task.kind}.png" alt="" draggable="false" />`;
+    `<img class="ya-pin__img" src="pins/${task.kind}.${ext}" alt="" draggable="false" />`;
   return el;
 }
 

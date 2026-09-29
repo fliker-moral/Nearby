@@ -15,14 +15,15 @@ function pinIconId(kind: string): string {
   return `pin-${kind}`;
 }
 
-/** Регистрирует кастомные иконки-метки (PNG из /public/pins) для всех подкатегорий. */
+/** Регистрирует кастомные иконки-метки (PNG/SVG из /public/pins) для всех подкатегорий. */
 export async function registerPinImages(map: MLMap): Promise<void> {
   const jobs = Object.keys(KIND_META).map(async (kind) => {
     const id = pinIconId(kind);
     if (map.hasImage(id)) return;
     try {
-      const img = await map.loadImage(`pins/${kind}.png`);
-      if (!map.hasImage(id)) map.addImage(id, img.data, { pixelRatio: 2.3 });
+      const ext = kind === 'escort' ? 'svg' : 'png';
+      const img = await map.loadImage(`pins/${kind}.${ext}`);
+      if (!map.hasImage(id)) map.addImage(id, img.data, { pixelRatio: kind === 'escort' ? 1 : 2.3 });
     } catch (e) {
       console.warn('не удалось загрузить метку', kind, e);
     }
