@@ -12,7 +12,11 @@ def task_with_coordinates_statement() -> Select[tuple[Task, float, float]]:
         Task,
         func.ST_Y(Task.location).label("lat"),
         func.ST_X(Task.location).label("lon"),
-    ).options(selectinload(Task.author))
+    ).options(
+        selectinload(Task.author),
+        selectinload(Task.assigned_volunteer),
+        selectinload(Task.reviews),
+    )
 
 
 async def get_task_with_coordinates(

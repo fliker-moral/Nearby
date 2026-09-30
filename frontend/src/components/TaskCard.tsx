@@ -24,6 +24,11 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
           <PinIcon width={14} height={14} /> {task.address_text}
         </span>
         <span className="task-card__meta">
+          {task.schedule_text && (
+            <span>
+              <ClockIcon width={13} height={13} /> {task.schedule_text}
+            </span>
+          )}
           <span className="task-card__status" style={{ color: status.color }}>
             ● {status.label}
           </span>

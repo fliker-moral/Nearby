@@ -6,10 +6,13 @@ import MyHelpScreen from './screens/MyHelpScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import BottomNav, { type Tab } from './components/BottomNav';
 import Toast, { type ToastData } from './components/Toast';
+import RoleRegistration from './components/RoleRegistration';
+import type { UserLocationFilter } from './components/LocationFilter';
 
 import ApplicantApp from './applicant/ApplicantApp';
 import { useTasks } from './hooks/useTasks';
-import { initMax, haptic } from './lib/maxBridge';
+import { listNotificationFilters, saveNotificationFilter, suggestAddresses, updateMyRole } from './api/client';
+import { getCurrentUser, initMax, haptic } from './lib/maxBridge';
 import { fetchWalkingRoute, type RouteResult } from './lib/routing';
 import { DEFAULT_CENTER, KIND_META, type Mode } from './config';
 import type { LngLat, Task } from './types';
@@ -20,6 +23,27 @@ function taskMode(t: Task): Mode {
 
 type Role = 'volunteer' | 'applicant';
 
+function locationPreferenceKey(): string {
+  const maxId = typeof localStorage === 'undefined' ? null : localStorage.getItem('nearby.maxId');
+  const userId = getCurrentUser().id;
+  return `nearby.location.${userId || maxId || 'local'}`;
+}
+
+function coverLetterPreferenceKey(): string {
+  const maxId = typeof localStorage === 'undefined' ? null : localStorage.getItem('nearby.maxId');
+  const userId = getCurrentUser().id;
+  return `nearby.cover-letter.${userId || maxId || 'local'}`;
+}
+
+function readLocationPreference(): UserLocationFilter {
+  try {
+    const saved = JSON.parse(localStorage.getItem(locationPreferenceKey()) ?? '{}') as Partial<UserLocationFilter>;
+    return { city: saved.city ?? '', district: saved.district ?? '' };
+  } catch {
+    return { city: '', district: '' };
+  }
+}
+
 export default function App() {
   const [role, setRole] = useState<Role>(() => {
     try {
@@ -28,39 +52,103 @@ export default function App() {
       return 'volunteer';
     }
   });
+  const [registered, setRegistered] = useState(() => {
+    try {
+      return localStorage.getItem('nearby.registration-complete') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [toast, setToast] = useState<ToastData | null>(null);
+
   const switchRole = (r: Role) => {
+    const firstSelection = !registered;
     try {
       localStorage.setItem('nearby.role', r);
+      localStorage.setItem('nearby.registration-complete', 'true');
     } catch {
       /* ignore */
     }
     setRole(r);
+    setRegistered(true);
+    if (firstSelection) {
+      showToast('Профиль можно сменить внизу раздела «Профиль».', 'info');
+    }
+    updateMyRole(r === 'applicant' ? 'APPLICANT' : 'VOLUNTEER').catch(() => {
+      setToast({
+        id: Date.now(),
+        message: firstSelection
+          ? 'Профиль сохранён на устройстве. Сменить его можно внизу раздела «Профиль».'
+          : 'Роль сохранена на этом устройстве. Сервер регистрации сейчас недоступен.',
+        kind: 'info',
+      });
+    });
   };
 
-  const [district, setDistrict] = useState('');
-  const { tasks, source, assign } = useTasks(district);
+  const [location, setLocation] = useState<UserLocationFilter>(readLocationPreference);
+  const [coverLetter, setCoverLetter] = useState(() => {
+    try {
+      return localStorage.getItem(coverLetterPreferenceKey()) ?? 'Здравствуйте! Готов(а) помочь с вашей просьбой.';
+    } catch {
+      return 'Здравствуйте! Готов(а) помочь с вашей просьбой.';
+    }
+  });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const { tasks, source, assign, withdraw, complete } = useTasks(location.city, location.district);
   const mapRef = useRef<MapViewHandle>(null);
 
   const [tab, setTab] = useState<Tab>('map');
   const mode: Mode = 'help';
-  const [search, setSearch] = useState('');
   const [kind, setKind] = useState<string | 'ALL'>('ALL');
   const [userLocation, setUserLocation] = useState<LngLat | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [peekDismissed, setPeekDismissed] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [routing, setRouting] = useState(false);
   const [routeInfo, setRouteInfo] = useState<RouteResult | null>(null);
-  const [toast, setToast] = useState<ToastData | null>(null);
 
   useEffect(() => {
     initMax();
   }, []);
 
   useEffect(() => {
+    listNotificationFilters().then((subscriptions) => {
+      const active = subscriptions.find((subscription) => subscription.enabled);
+      if (!active) return;
+      const savedLocation = readLocationPreference();
+      if (!savedLocation.city) {
+        const restored = { city: active.city, district: active.district ?? '' };
+        setLocation(restored);
+        try {
+          localStorage.setItem(locationPreferenceKey(), JSON.stringify(restored));
+        } catch {
+          /* Location remains available for this session. */
+        }
+        setNotificationsEnabled(true);
+      } else {
+        setNotificationsEnabled(savedLocation.city === active.city && savedLocation.district === (active.district ?? ''));
+      }
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (tab === 'map') requestAnimationFrame(() => mapRef.current?.resize());
   }, [tab]);
+
+  useEffect(() => {
+    if (!location.city) return;
+    const query = location.district ? `${location.district}, ${location.city}` : location.city;
+    suggestAddresses(query, location.city).then((suggestions) => {
+      const center = suggestions.find((item) => item.lat != null && item.lon != null);
+      if (center?.lat != null && center.lon != null) {
+        mapRef.current?.flyTo({ lat: center.lat, lon: center.lon }, location.district ? 13 : 11);
+      }
+    }).catch(() => undefined);
+  }, [location.city, location.district]);
 
   const showToast = (message: string, kind: ToastData['kind']) =>
     setToast({ id: Date.now(), message, kind });
@@ -71,13 +159,32 @@ export default function App() {
   );
 
   const visibleTasks = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return modeTasks.filter((t) => {
       if (kind !== 'ALL' && t.kind !== kind) return false;
-      if (q && !`${t.title} ${t.address_text ?? ''} ${t.address_hint}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [modeTasks, kind, search]);
+  }, [modeTasks, kind]);
+
+  const changeLocation = async (next: UserLocationFilter) => {
+    setLocation(next);
+    setNotificationsEnabled(false);
+    try {
+      localStorage.setItem(locationPreferenceKey(), JSON.stringify(next));
+    } catch {
+      /* The selected area remains in component state. */
+    }
+    try {
+      await saveNotificationFilter(next.city, next.district, false);
+    } catch {
+      // Saving the area locally must work even when the API is temporarily unavailable.
+    }
+  };
+
+  const toggleNotifications = async (enabled: boolean) => {
+    if (!location.city) throw new Error('Сначала выберите город');
+    await saveNotificationFilter(location.city, location.district, enabled);
+    setNotificationsEnabled(enabled);
+  };
 
   // В режиме «помощь» по умолчанию показываем карточку-peek ближайшей просьбы,
   // пока пользователь не смахнул её вниз (peekDismissed).
@@ -147,9 +254,9 @@ export default function App() {
     haptic('tap');
   };
 
-  const handleAssign = async (t: Task) => {
+  const handleAssign = async (t: Task, message: string) => {
     setAssigning(true);
-    const result = await assign(t);
+    const result = await assign(t, message);
     setAssigning(false);
     if (result === 'ok') {
       haptic('success');
@@ -164,13 +271,51 @@ export default function App() {
     }
   };
 
+  const handleWithdraw = async (t: Task) => {
+    setWithdrawing(true);
+    const result = await withdraw(t);
+    setWithdrawing(false);
+    showToast(
+      result === 'ok' ? 'Отклик отменён. Просьба снова доступна на карте.' : 'Не удалось отменить отклик. Попробуйте ещё раз.',
+      result === 'ok' ? 'info' : 'error',
+    );
+  };
+
+  const handleComplete = async (t: Task) => {
+    setCompleting(true);
+    const result = await complete(t);
+    setCompleting(false);
+    showToast(
+      result === 'ok' ? 'Готово! Заявитель сможет подтвердить выполнение и оставить отзыв.' : 'Не удалось отметить задачу выполненной.',
+      result === 'ok' ? 'success' : 'error',
+    );
+  };
+
+  const handleCoverLetterChange = (value: string) => {
+    setCoverLetter(value);
+    try {
+      localStorage.setItem(coverLetterPreferenceKey(), value);
+    } catch {
+      /* Письмо останется в форме до закрытия приложения. */
+    }
+  };
+
   const myTasks = tasks.filter(
-    (t) => t.status === 'IN_PROGRESS' || t.status === 'COMPLETED',
+    (t) => t.status === 'IN_PROGRESS' || t.status === 'COMPLETED' || t.status === 'CLOSED',
   );
   const activeCount = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
 
+  if (!registered) {
+    return <RoleRegistration onSelect={switchRole} />;
+  }
+
   if (role === 'applicant') {
-    return <ApplicantApp onSwitchRole={() => switchRole('volunteer')} />;
+    return (
+      <>
+        <ApplicantApp onSwitchRole={() => switchRole('volunteer')} />
+        <Toast toast={toast} onDone={() => setToast(null)} />
+      </>
+    );
   }
 
   return (
@@ -183,17 +328,20 @@ export default function App() {
           selected={mode === 'help' ? selected : null}
           sheetExpanded={sheetExpanded}
           userLocation={userLocation}
-          search={search}
+          location={location}
+          notificationsEnabled={notificationsEnabled}
           kind={kind}
           source={source}
           assigning={assigning}
+          withdrawing={withdrawing}
+          completing={completing}
+          coverLetter={coverLetter}
+          onCoverLetterChange={handleCoverLetterChange}
           routing={routing}
           routeInfo={routeInfo}
           onMode={changeMode}
-          onSearch={(value) => {
-            setSearch(value);
-            setDistrict(value);
-          }}
+          onLocationChange={changeLocation}
+          onToggleNotifications={toggleNotifications}
           onKind={setKind}
           onSelectTask={openTask}
           onUserLocation={setUserLocation}
@@ -201,6 +349,8 @@ export default function App() {
           onCloseSheet={() => setSheetExpanded(false)}
           onDismissSheet={dismissPeek}
           onAssign={handleAssign}
+          onWithdraw={handleWithdraw}
+          onComplete={handleComplete}
           onRoute={handleRoute}
           onClearRoute={clearRoute}
           onZoomIn={() => mapRef.current?.zoomIn()}

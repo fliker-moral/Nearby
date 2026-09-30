@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -11,13 +12,22 @@ from app.api.dependencies import (
     SessionDep,
     VolunteerDep,
 )
+from app.core.config import settings
 from app.core.errors import APIError
-from app.models.enums import TaskCategory, TaskStatus
+from app.models.enums import TaskCategory, TaskStatus, UserRole
 from app.models.task import Task
 from app.models.user import User
 from app.repositories.tasks import get_task_with_coordinates, task_with_coordinates_statement
 from app.schemas.review import ReviewCreate, ReviewRead
-from app.schemas.task import MonthlyStat, TaskCreate, TaskMapItem, TaskRead, TaskUpdate
+from app.schemas.task import (
+    AssignTaskRequest,
+    CommunityStatsRead,
+    MonthlyStat,
+    TaskCreate,
+    TaskMapItem,
+    TaskRead,
+    TaskUpdate,
+)
 from app.services import applicant_tasks
 from app.services.reviews import create_applicant_review
 from app.services.tasks import ensure_task_visible, task_to_read_model
@@ -31,6 +41,7 @@ async def list_map_tasks(
     session: SessionDep,
     bbox: str | None = None,
     category: TaskCategory | None = None,
+    city: str | None = None,
     district: str | None = None,
 ) -> list[TaskRead]:
     statement = (
@@ -40,8 +51,16 @@ async def list_map_tasks(
     )
     if category is not None:
         statement = statement.where(Task.category == category)
+    if city:
+        statement = statement.where(
+            Task.address_hint.ilike(f"%{city.strip()}%")
+            | Task.address_text.ilike(f"%{city.strip()}%")
+        )
     if district:
-        statement = statement.where(Task.address_hint.ilike(f"%{district.strip()}%"))
+        statement = statement.where(
+            Task.address_hint.ilike(f"%{district.strip()}%")
+            | Task.address_text.ilike(f"%{district.strip()}%")
+        )
     if bbox:
         try:
             min_lon, min_lat, max_lon, max_lat = (float(part) for part in bbox.split(","))
@@ -79,6 +98,7 @@ async def list_assigned_tasks(
 @router.post("/{task_id}/assign", response_model=TaskMapItem)
 async def assign_task(
     task_id: UUID,
+    payload: AssignTaskRequest,
     volunteer: VolunteerDep,
     session: SessionDep,
     publisher: EventPublisherDep,
@@ -92,6 +112,7 @@ async def assign_task(
         )
         .values(
             assigned_volunteer_id=volunteer.id,
+            volunteer_message=payload.cover_letter,
             status=TaskStatus.IN_PROGRESS,
             version=Task.version + 1,
         )
@@ -105,8 +126,73 @@ async def assign_task(
     )
     return TaskMapItem(
         id=task.id, title=task.title, category=task.category, status=task.status,
+        schedule_text=task.schedule_text,
         address_hint=task.address_hint, lat=lat, lon=lon,
     )
+
+
+@router.post("/{task_id}/withdraw", response_model=TaskMapItem)
+async def withdraw_task(
+    task_id: UUID,
+    volunteer: VolunteerDep,
+    session: SessionDep,
+    publisher: EventPublisherDep,
+) -> TaskMapItem:
+    result = await session.execute(
+        update(Task)
+        .where(
+            Task.id == task_id,
+            Task.assigned_volunteer_id == volunteer.id,
+            Task.status == TaskStatus.IN_PROGRESS,
+        )
+        .values(
+            assigned_volunteer_id=None,
+            volunteer_message=None,
+            status=TaskStatus.PUBLISHED,
+            version=Task.version + 1,
+        )
+    )
+    if result.rowcount != 1:
+        raise APIError(409, "TASK_NOT_WITHDRAWABLE", "This task is no longer assigned to you")
+    await session.commit()
+    task, lat, lon = await get_task_with_coordinates(session, task_id)  # type: ignore[misc]
+    reopened = TaskMapItem(
+        id=task.id, title=task.title, category=task.category, status=task.status,
+        schedule_text=task.schedule_text,
+        address_hint=task.address_hint, lat=lat, lon=lon,
+    )
+    await publisher.publish("TASK_CREATED", reopened.model_dump(mode="json"))
+    return reopened
+
+
+@router.post("/{task_id}/complete", response_model=TaskRead)
+async def complete_assigned_task(
+    task_id: UUID,
+    volunteer: VolunteerDep,
+    session: SessionDep,
+    publisher: EventPublisherDep,
+) -> TaskRead:
+    result = await session.execute(
+        update(Task)
+        .where(
+            Task.id == task_id,
+            Task.assigned_volunteer_id == volunteer.id,
+            Task.status == TaskStatus.IN_PROGRESS,
+        )
+        .values(
+            status=TaskStatus.COMPLETED,
+            completed_at=datetime.now(UTC),
+            version=Task.version + 1,
+        )
+    )
+    if result.rowcount != 1:
+        raise APIError(409, "TASK_NOT_COMPLETABLE", "This task is no longer assigned to you")
+    await session.commit()
+    task, lat, lon = await get_task_with_coordinates(session, task_id)  # type: ignore[misc]
+    await publisher.publish(
+        "TASK_STATUS_CHANGED", {"task_id": str(task_id), "new_status": TaskStatus.COMPLETED.value}
+    )
+    return task_to_read_model(task, lat=lat, lon=lon, viewer=volunteer)
 
 
 @router.get("/stats/monthly", response_model=list[MonthlyStat])
@@ -146,6 +232,21 @@ async def monthly_stats(session: SessionDep) -> list[MonthlyStat]:
         )
         for row in user_rows
     ]
+
+
+@router.get("/stats/community", response_model=CommunityStatsRead)
+async def community_stats(session: SessionDep) -> CommunityStatsRead:
+    participants = await session.scalar(
+        select(func.count(User.id)).where(User.role.in_([UserRole.APPLICANT, UserRole.VOLUNTEER]))
+    )
+    completed_tasks = await session.scalar(
+        select(func.count(Task.id)).where(Task.completed_at.is_not(None))
+    )
+    return CommunityStatsRead(
+        participants=participants or 0,
+        completed_tasks=completed_tasks or 0,
+        goal=settings.community_goal,
+    )
 
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)

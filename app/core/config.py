@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         alias="MAX_AUTH_FUTURE_SKEW_SECONDS",
     )
     admin_max_ids: str = Field(default="", alias="ADMIN_MAX_IDS")
+    community_goal: int = Field(default=50000, ge=1, alias="COMMUNITY_GOAL")
     dadata_api_key: str = Field(default="", alias="DADATA_API_KEY")
     dadata_secret_key: str = Field(default="", alias="DADATA_SECRET_KEY")
 
@@ -36,9 +37,6 @@ class Settings(BaseSettings):
     postgres_password: str = Field(
         default="nearby_password", alias="POSTGRES_PASSWORD"
     )
-
-    redis_host: str = Field(default="redis", alias="REDIS_HOST")
-    redis_port: int = Field(default=6379, alias="REDIS_PORT")
 
     minio_endpoint: str = Field(default="minio:9000", alias="MINIO_ENDPOINT")
     minio_public_endpoint: str = Field(
@@ -79,10 +77,6 @@ class Settings(BaseSettings):
             f"{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
-
-    @property
-    def redis_url(self) -> str:
-        return f"redis://{self.redis_host}:{self.redis_port}/0"
 
     @property
     def s3_endpoint_url(self) -> str:

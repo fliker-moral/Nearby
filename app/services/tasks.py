@@ -3,7 +3,7 @@ from uuid import UUID
 from app.models.enums import TaskStatus, UserRole
 from app.models.task import Task
 from app.models.user import User
-from app.schemas.task import TaskAuthorRead, TaskRead
+from app.schemas.task import TaskAuthorRead, TaskRead, TaskVolunteerRead
 
 
 def can_view_private_task(task: Task, user: User) -> bool:
@@ -22,12 +22,15 @@ def task_to_read_model(
     viewer: User,
 ) -> TaskRead:
     private = can_view_private_task(task, viewer)
+    assigned_volunteer = task.__dict__.get("assigned_volunteer")
+    task_reviews = task.__dict__.get("reviews", [])
     return TaskRead(
         id=task.id,
         author_id=task.author_id,
         assigned_volunteer_id=task.assigned_volunteer_id if private else None,
         title=task.title,
         description=task.description,
+        schedule_text=task.schedule_text,
         category=task.category,
         status=task.status,
         address_hint=task.address_hint,
@@ -51,6 +54,24 @@ def task_to_read_model(
             rating_count=task.author.rating_count,
         ),
         assigned_to_me=task.assigned_volunteer_id == viewer.id,
+        volunteer=(
+            TaskVolunteerRead(
+                id=assigned_volunteer.id,
+                name=assigned_volunteer.name,
+                avatar_url=assigned_volunteer.avatar_url,
+                rating_score=assigned_volunteer.rating_score,
+                rating_count=assigned_volunteer.rating_count,
+                quality_tags=assigned_volunteer.quality_tags,
+            )
+            if private and assigned_volunteer is not None
+            else None
+        ),
+        volunteer_message=task.volunteer_message if private else None,
+        reviewed_by_author=(
+            private
+            and viewer.id == task.author_id
+            and any(review.author_id == task.author_id for review in task_reviews)
+        ),
     )
 
 

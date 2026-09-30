@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,6 +20,10 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     avatar_url: str | None = Field(default=None, max_length=512)
+
+
+class UserRoleSelection(BaseModel):
+    role: Literal[UserRole.APPLICANT, UserRole.VOLUNTEER]
 
 
 class UserRead(UserBase):

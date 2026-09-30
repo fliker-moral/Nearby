@@ -8,10 +8,12 @@ import RequestDetail from './RequestDetail';
 import Toast, { type ToastData } from '../components/Toast';
 import { PlusIcon, ChevronRightIcon, ListIcon, ProfileIcon } from '../components/icons';
 
-const DEFAULT_ADDRESS = 'Москва, ул. Ленина, 15';
-
 function statusText(r: MyRequest): { label: string; cls: string } {
   switch (r.status) {
+    case 'moderation':
+      return { label: 'На проверке', cls: 'moderation' };
+    case 'rejected':
+      return { label: 'Нужны уточнения', cls: 'rejected' };
     case 'searching':
       return { label: 'Ищем волонтёра…', cls: 'searching' };
     case 'offer':
@@ -39,7 +41,7 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
   const offers = app.requests.filter((r) => r.status === 'offer').length;
 
   // Актуальные просьбы вверху (отклики — первыми), выполненные — в архиве.
-  const priority: Record<string, number> = { offer: 0, in_progress: 1, searching: 2 };
+  const priority: Record<string, number> = { offer: 0, in_progress: 1, searching: 2, moderation: 3, rejected: 4 };
   const active = app.requests
     .filter((r) => r.status !== 'done')
     .sort((a, b) => (priority[a.status] ?? 3) - (priority[b.status] ?? 3));
@@ -119,7 +121,7 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
             <div className="avatar avatar--lg">{user.name.charAt(0)}</div>
             <div>
               <b className="a-profile-name">{user.name}</b>
-              <span className="a-profile-sub">Заявитель · {DEFAULT_ADDRESS}</span>
+              <span className="a-profile-sub">Заявитель</span>
             </div>
           </div>
           <button className="a-btn a-btn--switch" onClick={onSwitchRole}>
@@ -156,13 +158,12 @@ export default function ApplicantApp({ onSwitchRole }: ApplicantAppProps) {
 
       {creating && (
         <CreateRequest
-          defaultAddress={DEFAULT_ADDRESS}
           onClose={() => setCreating(false)}
-          onCreate={(data) => {
-            const id = app.createRequest(data);
+          onCreate={async (data) => {
+            const request = await app.createRequest(data);
             setCreating(false);
             setTab('home');
-            setOpenId(id);
+            setOpenId(request.id);
           }}
         />
       )}

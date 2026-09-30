@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import MapView, { type MapViewHandle } from '../map/MapView';
 import Header from '../components/Header';
-import SearchBar from '../components/SearchBar';
+import LocationFilter, { type UserLocationFilter } from '../components/LocationFilter';
 import KindChips from '../components/KindChips';
 import MapControls from '../components/MapControls';
 import RequestSheet from '../components/RequestSheet';
@@ -11,7 +11,6 @@ import type { RouteResult } from '../lib/routing';
 import { formatDuration } from '../lib/routing';
 import { formatDistance } from '../lib/geo';
 import { RouteIcon, CloseIcon } from '../components/icons';
-import { saveNotificationFilter } from '../api/client';
 
 interface MapScreenProps {
   mode: Mode;
@@ -19,21 +18,29 @@ interface MapScreenProps {
   selected: Task | null;
   sheetExpanded: boolean;
   userLocation: LngLat | null;
-  search: string;
+  location: UserLocationFilter;
+  notificationsEnabled: boolean;
   kind: string | 'ALL';
   source: 'api' | 'loading' | 'error';
   assigning: boolean;
+  withdrawing: boolean;
+  completing: boolean;
+  coverLetter: string;
   routing: boolean;
   routeInfo: RouteResult | null;
   onMode: (m: Mode) => void;
-  onSearch: (v: string) => void;
+  onLocationChange: (location: UserLocationFilter) => Promise<void>;
+  onToggleNotifications: (enabled: boolean) => Promise<void>;
   onKind: (v: string | 'ALL') => void;
   onSelectTask: (t: Task) => void;
   onUserLocation: (p: LngLat) => void;
   onToggleExpand: () => void;
   onCloseSheet: () => void;
   onDismissSheet: () => void;
-  onAssign: (t: Task) => void;
+  onCoverLetterChange: (value: string) => void;
+  onAssign: (t: Task, coverLetter: string) => void;
+  onWithdraw: (t: Task) => void;
+  onComplete: (t: Task) => void;
   onRoute: (t: Task) => void;
   onClearRoute: () => void;
   onZoomIn: () => void;
@@ -55,17 +62,12 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
 
       <div className="map-top">
         <Header title={BRAND.name} subtitle={BRAND.tagline} />
-        <SearchBar
-          value={props.search}
-          placeholder="Фильтр: город или район"
-          onChange={props.onSearch}
+        <LocationFilter
+          location={props.location}
+          notificationsEnabled={props.notificationsEnabled}
+          onLocationChange={props.onLocationChange}
+          onToggleNotifications={props.onToggleNotifications}
         />
-        <button
-          className="filter-notify"
-          onClick={() => saveNotificationFilter('Москва', props.search).catch(() => undefined)}
-        >
-          🔔 Уведомлять о новых просьбах в этом фильтре
-        </button>
         <KindChips mode={props.mode} value={props.kind} onChange={props.onKind} />
       </div>
 
@@ -101,11 +103,17 @@ const MapScreen = forwardRef<MapViewHandle, MapScreenProps>(function MapScreen(p
           userLocation={props.userLocation}
           expanded={props.sheetExpanded}
           assigning={props.assigning}
+          withdrawing={props.withdrawing}
+          completing={props.completing}
+          coverLetter={props.coverLetter}
+          onCoverLetterChange={props.onCoverLetterChange}
           routing={props.routing}
           onToggleExpand={props.onToggleExpand}
           onClose={props.onCloseSheet}
           onDismiss={props.onDismissSheet}
           onAssign={props.onAssign}
+          onWithdraw={props.onWithdraw}
+          onComplete={props.onComplete}
           onRoute={props.onRoute}
         />
       )}

@@ -9,6 +9,7 @@ from app.models.user import User
 from app.repositories.tasks import get_task_with_coordinates, task_with_coordinates_statement
 from app.schemas.task import TaskRead
 from app.services.events import EventPublisher
+from app.services.max_notifications import notify_subscribers_about_task
 from app.services.tasks import task_to_read_model
 
 
@@ -62,6 +63,8 @@ async def moderate_task(
     task.version += 1
     await session.commit()
     await session.refresh(task)
+    if approve:
+        await notify_subscribers_about_task(session, task)
     await publisher.publish(
         "TASK_CREATED" if approve else "TASK_STATUS_CHANGED",
         {"task_id": str(task.id), "new_status": task.status.value},

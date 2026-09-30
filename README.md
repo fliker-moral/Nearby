@@ -1,78 +1,54 @@
-# Nearby backend
+# Nearby — «Рядом»
 
-Backend MAX Mini App «Рядом»: заявители публикуют просьбы о помощи, а волонтёры
-находят их на карте и берут в работу.
+Веб-приложение для просьб о помощи и волонтёрских откликов. Заявитель создаёт
+просьбу с местом и временем, волонтёр находит её на карте и откликается.
+Интерфейс поддерживает профили заявителя и волонтёра.
 
-## Стек
+## Состав проекта
 
-- Python 3.12, FastAPI, Pydantic v2
-- PostgreSQL 16 + PostGIS, SQLAlchemy 2 async, Alembic
-- Redis (следующий этап: Pub/Sub и WebSocket)
-- MinIO/S3 для фотографий
+- `frontend/` — React, TypeScript, Vite и карта MapLibre.
+- `app/` — REST API на FastAPI, авторизация MAX, работа с просьбами,
+  откликами, отзывами, модерацией и уведомлениями.
+- `alembic/` — миграции схемы базы данных.
+- PostgreSQL с PostGIS — пользователи, просьбы, геоданные и отзывы.
+- MinIO — объектное хранилище фотографий.
+- `docker-compose.yml` — сборка и запуск всего приложения.
 
-## Быстрый запуск
+## Развёртывание через Docker Compose
 
-```bash
-docker compose up --build
-```
-
-После старта:
-
-- API: <http://localhost:8000>
-- OpenAPI: <http://localhost:8000/docs>
-- readiness: <http://localhost:8000/health/ready>
-- MinIO console: <http://localhost:9001>
-
-Docker Compose по умолчанию работает в безопасно ограниченном local dev-auth режиме.
-Для запроса укажите:
-
-```text
-X-Dev-Max-Id: 1001
-X-Dev-Name: Test Applicant
-X-Dev-Role: APPLICANT
-```
-
-Роль используется только при первом создании dev-пользователя. В production
-обязательно задайте `APP_ENV=production`, `AUTH_MODE=max` и `MAX_BOT_TOKEN`.
-Приложение не запустится с `AUTH_MODE=dev` вне `local/test`.
-Первичных модераторов задайте доверенным списком `ADMIN_MAX_IDS=123,456`;
-роль администратора нельзя получить из клиентского запроса.
-
-Полный список переменных находится в `.env.example`.
-
-Для подсказок адресов задайте `DADATA_API_KEY` и `DADATA_SECRET_KEY` в `.env`.
-Фронтенд обращается к backend endpoint `/api/v1/addresses/suggest`; секретный ключ
-не передаётся в браузер.
-
-## Миграции
+Требуется Docker Engine с Compose V2. Команда собирает frontend и backend,
+запускает PostgreSQL и MinIO, применяет миграции базы данных и поднимает
+приложение:
 
 ```bash
-docker compose exec backend alembic upgrade head
-docker compose exec backend alembic downgrade base
+docker compose up --build -d
 ```
 
-При старте контейнера `alembic upgrade head` выполняется автоматически.
+Интерфейс публикуется на порту `5173`, API — на `8000`, документация API —
+на `8000/docs`, консоль MinIO — на `9001`. Порты и параметры сервисов можно
+переопределить переменными окружения; перечень приведён в `.env.example`.
 
-## Тесты и lint
+При старте контейнера backend автоматически выполняет `alembic upgrade head`.
+Frontend раздаётся Nginx, который перенаправляет запросы `/api/` в backend и
+поддерживает WebSocket upgrade.
 
-```bash
-python -m pip install -r requirements-dev.txt
-ruff check .
-pytest
-```
+Для авторизации MAX задайте `AUTH_MODE=max` и `MAX_BOT_TOKEN`. Для production
+также задайте `APP_ENV=production`, замените пароли PostgreSQL и MinIO и
+установите доверенные MAX ID администраторов в `ADMIN_MAX_IDS`.
+`AUTH_MODE=dev` предназначен только для окружений `local` и `test` и не
+допускается приложением при `APP_ENV=production`.
 
-## Реализованный API заявителя
+Подсказки адресов через DaData включаются при наличии `DADATA_API_KEY` и
+`DADATA_SECRET_KEY`. Секреты задаются только в окружении backend.
 
-- `GET/PATCH /api/v1/me`
-- `POST /api/v1/tasks`
-- `GET /api/v1/tasks/authored`
-- `GET/PATCH /api/v1/tasks/{id}`
-- `POST /api/v1/tasks/{id}/cancel`
-- `POST /api/v1/tasks/{id}/close`
-- `POST /api/v1/tasks/{id}/reviews`
-- `GET /api/v1/admin/tasks/moderation`
-- `POST /api/v1/admin/tasks/{id}/approve|reject`
-- `POST /api/v1/media/presign`
+## Основные возможности
 
-`address_text` и точные координаты доступны только автору, назначенному волонтёру
-и администратору. Публичная карточка содержит `address_hint` и округлённую точку.
+- создание и редактирование просьб, выбор адреса и времени;
+- карта просьб, фильтрация по местоположению и категории;
+- отклик волонтёра с сопроводительным письмом и управление откликом;
+- профили заявителя и волонтёра, история и статистика помощи;
+- оценки и отзывы после выполнения просьбы;
+- модерация и уведомления через MAX;
+- загрузка изображений в S3-совместимое хранилище.
+
+Основные API-маршруты доступны в OpenAPI по адресу `/docs`.

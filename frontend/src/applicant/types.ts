@@ -1,17 +1,17 @@
 // Модель данных стороны заявителя (пожилой человек создаёт просьбы о помощи).
 
-export type ReqStatus = 'searching' | 'offer' | 'in_progress' | 'done';
+export type ReqStatus = 'moderation' | 'rejected' | 'searching' | 'offer' | 'in_progress' | 'done';
 
 export interface Volunteer {
   id: string;
   name: string;
-  age: number;
-  verified: boolean;
+  age?: number;
+  verified?: boolean;
   rating_score: number;
   rating_count: number;
-  done_count: number;
-  distance_km: number;
-  detail: string; // «Студент МГТУ им. Баумана»
+  done_count?: number;
+  distance_km?: number;
+  detail?: string;
   message: string; // отклик волонтёра
 }
 

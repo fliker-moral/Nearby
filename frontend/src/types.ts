@@ -19,6 +19,9 @@ export interface TaskMapItem {
   title: string;
   category: TaskCategory;
   status: TaskStatus;
+  schedule_text?: string | null;
+  assigned_to_me?: boolean;
+  volunteer_message?: string | null;
   lat: number;
   lon: number;
 }
@@ -41,6 +44,15 @@ export interface Task extends TaskMapItem {
   address_hint: string;
   photos: string[];
   author: TaskAuthor;
+  volunteer?: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+    rating_score: number;
+    rating_count: number;
+    quality_tags: Record<string, number>;
+  } | null;
+  reviewed_by_author?: boolean;
   created_at: string;
   /** Подкатегория для иконки: meds/groceries/home/animals/escort или concert/... */
   kind: string;

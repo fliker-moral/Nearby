@@ -38,6 +38,8 @@ class Task(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    schedule_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    volunteer_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     category: Mapped[TaskCategory] = mapped_column(
         Enum(TaskCategory, name="task_category"),
         nullable=False,

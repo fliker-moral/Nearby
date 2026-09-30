@@ -30,6 +30,7 @@ async def create_task(
         author_id=applicant.id,
         title=payload.title,
         description=payload.description,
+        schedule_text=payload.schedule_text,
         category=payload.category,
         status=TaskStatus.PENDING_MODERATION,
         location=WKTElement(f"POINT({payload.lon} {payload.lat})", srid=4326),

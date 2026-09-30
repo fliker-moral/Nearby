@@ -10,9 +10,9 @@ interface MyHelpScreenProps {
 /** Задачи волонтёра «в работе» и выполненные — раздел «Моя помощь». */
 export default function MyHelpScreen({ tasks, onOpen }: MyHelpScreenProps) {
   const active = tasks.filter((t) => t.status === 'IN_PROGRESS');
-  const done = tasks.filter((t) => t.status === 'COMPLETED');
+  const done = tasks.filter((t) => t.status === 'COMPLETED' || t.status === 'CLOSED');
   const xp = tasks
-    .filter((t) => t.status === 'IN_PROGRESS' || t.status === 'COMPLETED')
+    .filter((t) => t.status === 'IN_PROGRESS' || t.status === 'COMPLETED' || t.status === 'CLOSED')
     .reduce((s, t) => s + (t.reward_xp ?? 0), 0);
 
   return (

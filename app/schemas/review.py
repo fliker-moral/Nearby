@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class ReviewCreate(BaseModel):
     score: int = Field(ge=1, le=5)
-    tags: list[str] = Field(default_factory=list, max_length=5)
+    tags: list[str] = Field(default_factory=list, max_length=6)
     comment: str | None = Field(default=None, max_length=2000)
 
 

@@ -1,9 +1,11 @@
 from uuid import UUID
 
 from fastapi import APIRouter, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from app.api.dependencies import CurrentUserDep, SessionDep
+from app.core.config import settings
+from app.core.errors import APIError
 from app.models.notification import NotificationSubscription
 from app.schemas.notification import NotificationSubscriptionCreate, NotificationSubscriptionRead
 
@@ -35,6 +37,17 @@ async def create_subscription(
     user: CurrentUserDep,
     session: SessionDep,
 ):
+    if payload.enabled and not settings.max_bot_token:
+        raise APIError(
+            503,
+            "MAX_NOTIFICATIONS_NOT_CONFIGURED",
+            "Уведомления MAX-бота не настроены. Запустите сервер с MAX_BOT_TOKEN.",
+        )
+    await session.execute(
+        update(NotificationSubscription)
+        .where(NotificationSubscription.user_id == user.id)
+        .values(enabled=False)
+    )
     existing = await session.scalar(
         select(NotificationSubscription).where(
             NotificationSubscription.user_id == user.id,

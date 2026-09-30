@@ -17,7 +17,7 @@ interface RequestDetailProps {
   onAccept: (id: string) => void;
   onDecline: (id: string) => void;
   onComplete: (id: string) => void;
-  onReview: (id: string, score: number, tags: string[]) => void;
+  onReview: (id: string, score: number, tags: string[]) => Promise<void>;
   onReport: (id: string, reason: string) => void;
   onCancel: (id: string) => void;
   onContact: (id: string) => void;
@@ -63,19 +63,31 @@ export default function RequestDetail({
   const [view, setView] = useState<'main' | 'report' | 'cancel'>('main');
   const [reviewing, setReviewing] = useState(false);
   const [thanked, setThanked] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewError, setReviewError] = useState('');
   const [score, setScore] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [reason, setReason] = useState('');
   const v = r.volunteer;
   const meta = KIND_META[r.kind];
-  const far = v ? v.distance_km > 30 : false;
+  const distanceKm = v?.distance_km;
+  const far = distanceKm != null && distanceKm > 30;
 
   const toggleTag = (t: string) =>
     setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
-  const sendReview = () => {
-    onReview(r.id, score, tags);
-    setThanked(true);
+  const sendReview = async () => {
+    if (score === 0 || reviewSaving) return;
+    setReviewSaving(true);
+    setReviewError('');
+    try {
+      await onReview(r.id, score, tags);
+      setThanked(true);
+    } catch {
+      setReviewError('Не удалось сохранить отзыв. Проверьте соединение и попробуйте ещё раз.');
+    } finally {
+      setReviewSaving(false);
+    }
   };
 
   return (
@@ -148,6 +160,30 @@ export default function RequestDetail({
 
         {view === 'main' && (
           <>
+            {r.status === 'moderation' && (
+              <>
+                <div className="a-searching">
+                  <span className="a-moderation-mark">✓</span>
+                  <b>Просьба отправлена на проверку</b>
+                  <span>После одобрения она появится у волонтёров поблизости.</span>
+                </div>
+                <button className="a-btn a-btn--text a-btn--danger-text" onClick={() => setView('cancel')}>
+                  Отменить просьбу
+                </button>
+              </>
+            )}
+
+            {r.status === 'rejected' && (
+              <>
+                <div className="a-warn">
+                  Просьбе нужны уточнения. Она пока не видна волонтёрам. Вы можете отменить её и создать новую.
+                </div>
+                <button className="a-btn a-btn--text a-btn--danger-text" onClick={() => setView('cancel')}>
+                  Отменить просьбу
+                </button>
+              </>
+            )}
+
             {/* ── Поиск волонтёра ── */}
             {r.status === 'searching' && (
               <>
@@ -166,9 +202,9 @@ export default function RequestDetail({
             {r.status === 'offer' && v && (
               <>
                 <div className="a-vol-banner">Вам готов помочь волонтёр</div>
-                {far && (
+                {far && distanceKm != null && (
                   <div className="a-warn">
-                    ⚠️ Волонтёр далеко — {v.distance_km} км ({v.detail}). {walkEstimate(v.distance_km)}.
+                    ⚠️ Волонтёр далеко — {distanceKm} км. {walkEstimate(distanceKm)}.
                     Лучше отклонить и дождаться, кто рядом.
                   </div>
                 )}
@@ -176,7 +212,7 @@ export default function RequestDetail({
                   <div className="avatar avatar--lg">{v.name.charAt(0)}</div>
                   <div className="a-vol__info">
                     <span className="a-vol__name">
-                      {v.name}, {v.age} года
+                      {v.name}{v.age ? `, ${v.age} года` : ''}
                     </span>
                     {v.verified ? (
                       <span className="verified-chip">Проверенный волонтёр</span>
@@ -190,20 +226,10 @@ export default function RequestDetail({
                   </div>
                 </div>
                 <div className="a-vol-tiles">
-                  <div className="a-vt">
-                    <b>{v.done_count}</b>
-                    <span>выполнено</span>
-                  </div>
-                  <div className="a-vt">
-                    <b>{v.distance_km < 100 ? `~${v.distance_km} км` : `${v.distance_km} км`}</b>
-                    <span>{far ? 'далеко!' : 'рядом'}</span>
-                  </div>
-                  <div className="a-vt">
-                    <b>{v.detail.split(' ')[0]}</b>
-                    <span>{v.detail.split(' ').slice(1).join(' ')}</span>
-                  </div>
+                  {v.done_count != null && <div className="a-vt"><b>{v.done_count}</b><span>выполнено</span></div>}
+                  {distanceKm != null && <div className="a-vt"><b>{distanceKm < 100 ? `~${distanceKm} км` : `${distanceKm} км`}</b><span>{far ? 'далеко!' : 'рядом'}</span></div>}
                 </div>
-                <div className="a-msg">«{v.message}»</div>
+                {v.message && <div className="a-msg">«{v.message}»</div>}
                 <div className="a-note">
                   <ShieldIcon width={18} height={18} /> После согласия волонтёр получит ваш телефон и
                   адрес, чтобы связаться в MAX.
@@ -229,10 +255,11 @@ export default function RequestDetail({
                   <div className="a-vol__info">
                     <span className="a-vol__name">{v.name} помогает вам</span>
                     <span className="a-vol__rating">
-                      <StarIcon width={16} height={16} /> {v.rating_score.toFixed(1)} · {v.detail}
+                      <StarIcon width={16} height={16} /> {v.rating_score.toFixed(1)} ({v.rating_count})
                     </span>
                   </div>
                 </div>
+                {v.message && <div className="a-msg">«{v.message}»</div>}
                 <div className="a-note a-note--ok">
                   <NavArrowIcon width={18} height={18} /> Свяжитесь с волонтёром, чтобы уточнить
                   детали. Когда всё будет готово — отметьте, что просьба выполнена.
@@ -297,11 +324,12 @@ export default function RequestDetail({
                 </div>
                 <button
                   className="a-btn a-btn--primary"
-                  disabled={score === 0}
+                  disabled={score === 0 || reviewSaving}
                   onClick={sendReview}
                 >
-                  {score === 0 ? 'Поставьте оценку' : 'Отправить отзыв'}
+                  {reviewSaving ? 'Сохраняем отзыв…' : score === 0 ? 'Поставьте оценку' : 'Отправить отзыв'}
                 </button>
+                {reviewError && <div className="a-warn" role="alert">{reviewError}</div>}
                 <button
                   className="a-btn a-btn--text a-btn--danger-text"
                   onClick={() => setView('report')}

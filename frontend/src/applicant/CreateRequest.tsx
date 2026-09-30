@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HELP_CHIPS, KIND_META } from '../config';
 import type { MyRequest } from './types';
 import { CloseIcon, CheckIcon } from '../components/icons';
-import { suggestAddresses, type AddressSuggestion } from '../api/client';
+import { listAuthoredTasks, suggestAddresses, type AddressSuggestion } from '../api/client';
+import { getCurrentUser } from '../lib/maxBridge';
+import AddressMapPicker from './AddressMapPicker';
 
 interface CreateRequestProps {
-  defaultAddress: string;
   onClose: () => void;
-  onCreate: (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when' | 'lat' | 'lon'>) => void;
+  onCreate: (data: Pick<MyRequest, 'kind' | 'title' | 'description' | 'address' | 'when' | 'lat' | 'lon'>) => Promise<void>;
 }
 
 function shortDate(offset: number): string {
@@ -22,31 +23,96 @@ const DATE_OPTIONS = [
   { key: 'day2', label: 'Через 2 дня', date: shortDate(2) },
   { key: 'day3', label: 'Через 3 дня', date: shortDate(3) },
 ] as const;
-const TIME_OPTIONS = [
-  { label: 'Утром', range: '08:00-12:00' },
-  { label: 'Днем', range: '12:00-18:00' },
-  { label: 'Вечером', range: '18:00-21:00' },
-  { label: 'В любое время', range: 'Без ограничений' },
-] as const;
-const TIME_INPUT_MODES = [
-  { key: 'exact', label: 'Точное время' },
-  { key: 'range', label: 'Промежуток' },
-] as const;
+const TIME_PRESETS = [
+  { label: 'Утром', detail: '08:00–12:00', value: '08:00–12:00' },
+  { label: 'Днём', detail: '12:00–18:00', value: '12:00–18:00' },
+  { label: 'Вечером', detail: '18:00–21:00', value: '18:00–21:00' },
+  { label: 'В любое время', detail: 'Без ограничений', value: 'В любое время' },
+];
 
-export default function CreateRequest({ defaultAddress, onClose, onCreate }: CreateRequestProps) {
+interface PreferredAddress extends AddressSuggestion {
+  lat: number;
+  lon: number;
+  count: number;
+}
+
+function preferredAddressStorageKey(): string {
+  const maxId = typeof localStorage === 'undefined' ? null : localStorage.getItem('nearby.maxId');
+  const userId = getCurrentUser().id;
+  return `nearby.preferred-addresses.${userId || maxId || 'local'}`;
+}
+
+function readPreferredAddresses(): PreferredAddress[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(preferredAddressStorageKey()) ?? '[]');
+    return Array.isArray(parsed) ? parsed as PreferredAddress[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberAddress(address: PreferredAddress): void {
+  const current = readPreferredAddresses();
+  const existing = current.find((item) => item.value.toLowerCase() === address.value.toLowerCase());
+  const next = existing
+    ? current.map((item) => item.value.toLowerCase() === address.value.toLowerCase() ? { ...address, count: existing.count + 1 } : item)
+    : [...current, { ...address, count: 1 }];
+  try {
+    localStorage.setItem(preferredAddressStorageKey(), JSON.stringify(next.sort((a, b) => b.count - a.count).slice(0, 6)));
+  } catch {
+    // Local preferences are optional; the request itself can still be submitted.
+  }
+}
+
+export default function CreateRequest({ onClose, onCreate }: CreateRequestProps) {
   const [step, setStep] = useState(0);
   const [kind, setKind] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dateKey, setDateKey] = useState<(typeof DATE_OPTIONS)[number]['key']>('today');
-  const [timeMode, setTimeMode] = useState<(typeof TIME_INPUT_MODES)[number]['key'] | null>(null);
-  const [time, setTime] = useState<(typeof TIME_OPTIONS)[number]['label'] | null>(null);
+  const [timeMode, setTimeMode] = useState<'exact' | 'range'>('exact');
   const [exactTime, setExactTime] = useState('10:15');
-  const [rangeStart, setRangeStart] = useState('10:00');
-  const [rangeEnd, setRangeEnd] = useState('12:00');
-  const [address, setAddress] = useState(defaultAddress);
+  const [timeStart, setTimeStart] = useState('08:00');
+  const [timeEnd, setTimeEnd] = useState('12:00');
+  const [timePreset, setTimePreset] = useState<string | null>(null);
+  const [address, setAddress] = useState('');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<AddressSuggestion | null>(null);
+  const [preferredAddresses, setPreferredAddresses] = useState<PreferredAddress[]>(readPreferredAddresses);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  useEffect(() => {
+    listAuthoredTasks().then((tasks) => {
+      const counts = new Map<string, PreferredAddress>();
+      for (const task of tasks) {
+        const value = (task.address_text ?? task.address_hint).trim();
+        if (!value || !Number.isFinite(task.lat) || !Number.isFinite(task.lon)) continue;
+        const key = value.toLowerCase();
+        const current = counts.get(key);
+        counts.set(key, {
+          value,
+          city: null,
+          region: null,
+          street: null,
+          house: null,
+          lat: task.lat,
+          lon: task.lon,
+          count: (current?.count ?? 0) + 1,
+        });
+      }
+      if (counts.size) {
+        const fromRequests = [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 6);
+        setPreferredAddresses(fromRequests);
+        try {
+          localStorage.setItem(preferredAddressStorageKey(), JSON.stringify(fromRequests));
+        } catch {
+          // Favorites can still be used for this session.
+        }
+      }
+    }).catch(() => undefined);
+  }, []);
 
   const pickKind = (k: string) => {
     setKind(k);
@@ -54,40 +120,33 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
     setStep(1);
   };
 
-  const getWhenLabel = () => {
-    if (timeMode === 'exact') return `к ${exactTime}`;
-    if (timeMode === 'range') return `${rangeStart}-${rangeEnd}`;
-    return time ?? '';
+  const submit = async () => {
+    if (!kind || !address.trim() || isSubmitting) return;
+    const place = selectedAddress;
+    if (place?.lat == null || place.lon == null) return;
+    rememberAddress({ ...place, lat: place.lat, lon: place.lon, count: 0 });
+    setPreferredAddresses(readPreferredAddresses());
+    const selectedTime = timePreset ?? (timeMode === 'exact' ? exactTime : `${timeStart}–${timeEnd}`);
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      await onCreate({
+        kind,
+        title: title.trim() || KIND_META[kind].label,
+        description,
+        address,
+        when: `${DATE_OPTIONS.find((option) => option.key === dateKey)?.label} · ${selectedTime}`,
+        lat: place.lat,
+        lon: place.lon,
+      });
+    } catch {
+      setSubmitError('Не удалось отправить просьбу. Проверьте соединение и попробуйте ещё раз.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const formatWhen = () => {
-    const dateLabel = DATE_OPTIONS.find((option) => option.key === dateKey)?.label ?? '';
-    const timeLabel = getWhenLabel();
-    return timeLabel ? `${dateLabel} · ${timeLabel}` : dateLabel;
-  };
-
-  const togglePresetTime = (label: (typeof TIME_OPTIONS)[number]['label']) => {
-    setTimeMode(null);
-    setTime((current) => (current === label ? null : label));
-  };
-
-  const toggleTimeMode = (mode: (typeof TIME_INPUT_MODES)[number]['key']) => {
-    setTime(null);
-    setTimeMode((current) => (current === mode ? null : mode));
-  };
-
-  const submit = () => {
-    if (!kind) return;
-    onCreate({
-      kind,
-      title: title.trim() || KIND_META[kind].label,
-      description,
-      address,
-      when: formatWhen(),
-      lat: selectedAddress?.lat ?? 55.7512,
-      lon: selectedAddress?.lon ?? 37.6183,
-    });
-  };
+  const selectedTime = timePreset ?? (timeMode === 'exact' ? exactTime : `${timeStart}–${timeEnd}`);
 
   const onAddressChange = (value: string) => {
     setAddress(value);
@@ -99,10 +158,16 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
     suggestAddresses(value).then(setSuggestions).catch(() => setSuggestions([]));
   };
 
+  const chooseAddress = (place: AddressSuggestion) => {
+    setAddress(place.value);
+    setSelectedAddress(place);
+    setSuggestions([]);
+  };
+
   return (
     <div className="a-modal">
       <header className="a-modal__head">
-        <button className="a-icon-btn" onClick={step === 0 ? onClose : () => setStep((s) => s - 1)}>
+        <button className="a-icon-btn" disabled={isSubmitting} onClick={step === 0 ? onClose : () => setStep((s) => s - 1)}>
           {step === 0 ? <CloseIcon width={24} height={24} /> : '‹ Назад'}
         </button>
         <span className="a-modal__title">Новая просьба</span>
@@ -127,12 +192,12 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
         {step === 1 && (
           <>
             <h2 className="a-q">Расскажите подробнее</h2>
-            <label className="a-label">Категория помощи</label>
+            <label className="a-label">Коротко о просьбе</label>
             <input
-              className="a-input a-input--readonly"
+              className="a-input"
               value={title}
-              readOnly
-              aria-readonly="true"
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Например: купить лекарства"
             />
             <label className="a-label">Что нужно сделать?</label>
             <textarea
@@ -157,51 +222,28 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
               ))}
             </div>
             <label className="a-label">Выберите время</label>
-            <div className="a-time-picker">
-              <div className="a-time-modes">
-                {TIME_INPUT_MODES.map((mode) => (
-                  <button
-                    key={mode.key}
-                    type="button"
-                    className={`a-time-mode${timeMode === mode.key ? ' a-time-mode--on' : ''}`}
-                    onClick={() => toggleTimeMode(mode.key)}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
-              {timeMode === 'exact' && (
-                <div className="a-time-panel">
-                  <label className="a-label a-label--compact">Точное время</label>
-                  <input className="a-input a-time-input" type="time" value={exactTime} onChange={(e) => setExactTime(e.target.value)} />
+            <div className="a-time-modes" role="group" aria-label="Способ выбора времени">
+              <button type="button" className={`a-time-mode${timeMode === 'exact' ? ' a-time-mode--on' : ''}`} onClick={() => { setTimeMode('exact'); setTimePreset(null); }}>Точное время</button>
+              <button type="button" className={`a-time-mode${timeMode === 'range' ? ' a-time-mode--on' : ''}`} onClick={() => { setTimeMode('range'); setTimePreset(null); }}>Промежуток</button>
+            </div>
+            <div className="a-time-panel">
+              <span className="a-time-panel__label">{timeMode === 'exact' ? 'Точное время' : 'Укажите промежуток'}</span>
+              {timeMode === 'exact' ? (
+                <input className="a-input a-time-input" type="time" value={exactTime} onChange={(event) => { setExactTime(event.target.value); setTimePreset(null); }} />
+              ) : (
+                <div className="a-time-range">
+                  <input className="a-input a-time-input" aria-label="Начало промежутка" type="time" value={timeStart} onChange={(event) => { setTimeStart(event.target.value); setTimePreset(null); }} />
+                  <span>—</span>
+                  <input className="a-input a-time-input" aria-label="Конец промежутка" type="time" value={timeEnd} onChange={(event) => { setTimeEnd(event.target.value); setTimePreset(null); }} />
                 </div>
               )}
-              {timeMode === 'range' && (
-                <div className="a-time-panel">
-                  <label className="a-label a-label--compact">Промежуток времени</label>
-                  <div className="a-time-range">
-                    <input className="a-input a-time-input" type="time" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} />
-                    <span className="a-time-range__dash">—</span>
-                    <input className="a-input a-time-input" type="time" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} />
-                  </div>
-                </div>
-              )}
-              <div className="a-time-divider">
-                <span>или выберите готовый вариант</span>
-              </div>
-              <div className="a-chips a-chips--time">
-                {TIME_OPTIONS.map((option) => (
-                  <button
-                    key={option.label}
-                    type="button"
-                    className={`a-when${time === option.label ? ' a-when--on' : ''}`}
-                    onClick={() => togglePresetTime(option.label)}
-                  >
-                    <span className="a-when__label">{option.label}</span>
-                    <span className="a-when__range">{option.range}</span>
-                  </button>
-                ))}
-              </div>
+            </div>
+            <div className="a-time-presets" aria-label="Готовое время">
+              {TIME_PRESETS.map((preset) => (
+                <button key={preset.label} type="button" className={`a-time-preset${timePreset === preset.value ? ' a-time-preset--on' : ''}`} onClick={() => setTimePreset(preset.value)}>
+                  <b>{preset.label}</b><span>{preset.detail}</span>
+                </button>
+              ))}
             </div>
             <button className="a-btn a-btn--primary" onClick={() => setStep(2)}>
               Дальше
@@ -217,22 +259,31 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
               className="a-input"
               value={address}
               onChange={(e) => onAddressChange(e.target.value)}
-              placeholder="Москва, улица, дом"
+              placeholder="Введите адрес или выберите место на карте"
             />
+            <button type="button" className="a-map-pick" onClick={() => setMapPickerOpen(true)}>
+              <span aria-hidden="true">⌖</span> Выбрать на карте
+            </button>
             {suggestions.length > 0 && (
               <div className="a-address-suggestions">
                 {suggestions.map((suggestion) => (
                   <button
                     type="button"
                     key={`${suggestion.value}-${suggestion.lat}-${suggestion.lon}`}
-                    onClick={() => {
-                      setAddress(suggestion.value);
-                      setSelectedAddress(suggestion);
-                      setSuggestions([]);
-                    }}
+                    onClick={() => chooseAddress(suggestion)}
                   >
                     <b>{suggestion.value}</b>
                     <span>{[suggestion.city, suggestion.region].filter(Boolean).join(', ')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {suggestions.length === 0 && address.length === 0 && preferredAddresses.length > 0 && (
+              <div className="a-address-favorites">
+                <span className="a-address-favorites__title">Часто выбираемые места</span>
+                {preferredAddresses.map((place) => (
+                  <button type="button" key={`${place.value}-${place.lat}-${place.lon}`} onClick={() => chooseAddress(place)}>
+                    <span aria-hidden="true">◷</span><b>{place.value}</b>
                   </button>
                 ))}
               </div>
@@ -248,16 +299,33 @@ export default function CreateRequest({ defaultAddress, onClose, onCreate }: Cre
               </div>
               <div className="a-summary__row">
                 <span className="a-summary__k">🕐 Когда</span>
-                <b>{formatWhen()}</b>
+                <b>{DATE_OPTIONS.find((option) => option.key === dateKey)?.label} · {selectedTime}</b>
               </div>
             </div>
 
-            <button className="a-btn a-btn--primary" onClick={submit}>
-              <CheckIcon width={22} height={22} /> Опубликовать просьбу
+            {submitError && <div className="a-submit-error" role="alert">{submitError}</div>}
+            <button className="a-btn a-btn--primary" onClick={submit} disabled={isSubmitting || !address.trim() || !(selectedAddress?.lat != null && selectedAddress.lon != null)}>
+              {isSubmitting ? 'Отправляем…' : <><CheckIcon width={22} height={22} /> Опубликовать просьбу</>}
             </button>
           </>
         )}
       </div>
+      {mapPickerOpen && (
+        <AddressMapPicker
+          initialPoint={selectedAddress?.lat != null && selectedAddress.lon != null ? { lat: selectedAddress.lat, lon: selectedAddress.lon } : undefined}
+          onCancel={() => setMapPickerOpen(false)}
+          onChoose={(point) => {
+            const place: AddressSuggestion = {
+              value: `Точка на карте (${point.lat.toFixed(5)}, ${point.lon.toFixed(5)})`,
+              city: null, region: null, street: null, house: null, lat: point.lat, lon: point.lon,
+            };
+            setAddress(place.value);
+            setSelectedAddress(place);
+            setSuggestions([]);
+            setMapPickerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -17,20 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: nearby-redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   minio:
     image: minio/minio:latest
     container_name: nearby-minio
@@ -62,6 +48,7 @@ services:
       AUTH_MODE: ${AUTH_MODE:-dev}
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
       ADMIN_MAX_IDS: ${ADMIN_MAX_IDS:-}
+      COMMUNITY_GOAL: ${COMMUNITY_GOAL:-50000}
       DADATA_API_KEY: ${DADATA_API_KEY:-}
       DADATA_SECRET_KEY: ${DADATA_SECRET_KEY:-}
       POSTGRES_HOST: db
@@ -69,8 +56,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-nearby}
       POSTGRES_USER: ${POSTGRES_USER:-nearby}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nearby_password}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
@@ -81,7 +66,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
+      minio:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
@@ -89,7 +74,22 @@ services:
       timeout: 5s
       retries: 10
 
+  frontend:
+    build:
+      context: ./frontend
+    container_name: nearby-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
-  redis_data:
   minio_data:

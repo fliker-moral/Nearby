@@ -14,6 +14,7 @@ class TaskCoordinates(BaseModel):
 class TaskBase(BaseModel):
     title: str = Field(min_length=3, max_length=255)
     description: str = Field(min_length=10, max_length=5000)
+    schedule_text: str | None = Field(default=None, max_length=120)
     category: TaskCategory
     address_hint: str = Field(min_length=3, max_length=255)
     address_text: str = Field(min_length=3, max_length=500)
@@ -30,6 +31,7 @@ class TaskUpdate(BaseModel):
 
     title: str | None = Field(default=None, min_length=3, max_length=255)
     description: str | None = Field(default=None, min_length=10, max_length=5000)
+    schedule_text: str | None = Field(default=None, max_length=120)
     category: TaskCategory | None = None
     address_hint: str | None = Field(default=None, min_length=3, max_length=255)
     address_text: str | None = Field(default=None, min_length=3, max_length=500)
@@ -52,6 +54,19 @@ class TaskAuthorRead(BaseModel):
     rating_count: int
 
 
+class TaskVolunteerRead(BaseModel):
+    id: UUID
+    name: str
+    avatar_url: str | None
+    rating_score: float
+    rating_count: int
+    quality_tags: dict[str, int]
+
+
+class AssignTaskRequest(BaseModel):
+    cover_letter: str | None = Field(default=None, max_length=1000)
+
+
 class TaskRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -60,6 +75,7 @@ class TaskRead(BaseModel):
     assigned_volunteer_id: UUID | None
     title: str
     description: str
+    schedule_text: str | None
     category: TaskCategory
     status: TaskStatus
     address_hint: str
@@ -77,6 +93,9 @@ class TaskRead(BaseModel):
     closed_at: datetime | None
     author: TaskAuthorRead
     assigned_to_me: bool
+    volunteer: TaskVolunteerRead | None = None
+    volunteer_message: str | None = None
+    reviewed_by_author: bool = False
 
 
 class TaskMapItem(BaseModel):
@@ -84,6 +103,7 @@ class TaskMapItem(BaseModel):
     title: str
     category: TaskCategory
     status: TaskStatus
+    schedule_text: str | None = None
     address_hint: str
     lat: float
     lon: float
@@ -93,6 +113,12 @@ class MonthlyStat(BaseModel):
     month: str
     participants: int
     completed_tasks: int
+
+
+class CommunityStatsRead(BaseModel):
+    participants: int
+    completed_tasks: int
+    goal: int
 
 
 class ModerationRejectRequest(BaseModel):

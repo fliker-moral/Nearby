@@ -13,6 +13,7 @@ import {
   StarIcon,
   WalletIcon,
   CheckIcon,
+  CheckCircleIcon,
 } from './icons';
 
 interface RequestSheetProps {
@@ -20,10 +21,16 @@ interface RequestSheetProps {
   userLocation: LngLat | null;
   expanded: boolean;
   assigning: boolean;
+  withdrawing: boolean;
+  completing: boolean;
+  onCoverLetterChange: (value: string) => void;
+  coverLetter: string;
   onToggleExpand: () => void;
   onClose: () => void;
   onDismiss: () => void;
-  onAssign: (task: Task) => void;
+  onAssign: (task: Task, coverLetter: string) => void;
+  onWithdraw: (task: Task) => void;
+  onComplete: (task: Task) => void;
   onRoute: (task: Task) => void;
   routing: boolean;
 }
@@ -37,16 +44,23 @@ export default function RequestSheet({
   userLocation,
   expanded,
   assigning,
+  withdrawing,
+  completing,
+  coverLetter,
+  onCoverLetterChange,
   onToggleExpand,
   onClose,
   onDismiss,
   onAssign,
+  onWithdraw,
+  onComplete,
   onRoute,
   routing,
 }: RequestSheetProps) {
   const status = STATUS_META[task.status];
   const available = task.status === 'PUBLISHED';
-  const mine = task.status === 'IN_PROGRESS';
+  const mine = task.status === 'IN_PROGRESS' && task.assigned_to_me;
+  const completedByMe = task.status === 'COMPLETED' && task.assigned_to_me;
 
   // Свайп вниз: в свёрнутом виде — убрать карточку, в развёрнутом — свернуть.
   const startY = useRef<number | null>(null);
@@ -100,16 +114,20 @@ export default function RequestSheet({
     (userLocation ? distanceMeters(userLocation, { lon: task.lon, lat: task.lat }) : null);
 
   const primary = mine ? (
-    <button className="btn btn--done">
-      <CheckIcon width={20} height={20} /> Задача у вас
+    <button className="btn btn--done" disabled={completing} onClick={() => onComplete(task)}>
+      <CheckCircleIcon width={20} height={20} /> {completing ? 'Сохраняем…' : 'Отметить выполненной'}
+    </button>
+  ) : completedByMe ? (
+    <button className="btn btn--done" disabled>
+      <CheckIcon width={20} height={20} /> Ждёт оценки заявителя
     </button>
   ) : available ? (
-    <button className="btn btn--coral" disabled={assigning} onClick={() => onAssign(task)}>
+    <button className="btn btn--coral" disabled={assigning} onClick={() => onAssign(task, coverLetter.trim())}>
       {assigning ? 'Откликаюсь…' : 'Откликнуться'}
     </button>
   ) : (
     <button className="btn btn--muted" disabled>
-      {status.label}
+      {task.status === 'IN_PROGRESS' ? 'Уже откликнулись' : status.label}
     </button>
   );
 
@@ -169,7 +187,7 @@ export default function RequestSheet({
           <div className="req-meta">
             {(task.eta_minutes || true) && (
               <span className="req-meta__item req-meta__item--time">
-                <ClockIcon width={16} height={16} /> Сегодня, до 18:00
+                <ClockIcon width={16} height={16} /> {task.schedule_text ?? 'В любое время'}
               </span>
             )}
             {distM != null && (
@@ -183,7 +201,7 @@ export default function RequestSheet({
             <div className="tiles">
               <div className="tile">
                 <ClockIcon width={18} height={18} className="tile__ic tile__ic--coral" />
-                <b>Сегодня, до 18:00</b>
+                <b>{task.schedule_text ?? 'В любое время'}</b>
                 <span>Желательное время</span>
               </div>
               <div className="tile">
@@ -229,6 +247,23 @@ export default function RequestSheet({
               </div>
             </div>
 
+            {available && (
+              <label className="req-cover-letter">
+                <span>Сопроводительное письмо <small>отправится вместе с откликом</small></span>
+                <textarea
+                  value={coverLetter}
+                  maxLength={1000}
+                  onChange={(event) => onCoverLetterChange(event.target.value)}
+                  placeholder="Здравствуйте! Готов(а) помочь…"
+                  rows={3}
+                />
+              </label>
+            )}
+
+            {mine && task.volunteer_message && (
+              <div className="req-cover-letter-sent">Ваше письмо: «{task.volunteer_message}»</div>
+            )}
+
             <button className="btn btn--route" disabled={routing} onClick={() => onRoute(task)}>
               <RouteIcon width={20} height={20} />
               {routing ? 'Строю маршрут…' : 'Построить пеший маршрут'}
@@ -243,6 +278,11 @@ export default function RequestSheet({
             </button>
           )}
           {primary}
+          {mine && (
+            <button className="btn btn--withdraw" disabled={withdrawing} onClick={() => onWithdraw(task)}>
+              {withdrawing ? 'Отменяем отклик…' : 'Отменить отклик'}
+            </button>
+          )}
         </div>
       </div>
     </>
